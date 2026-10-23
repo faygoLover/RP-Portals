@@ -58,6 +58,9 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
     public String color = "000000";
     public float alpha = 1.0f;
     public boolean glow = true;
+    /** Свет вокруг (если светится): радиус, блоков, и сила. */
+    public float lightRange = 6f;
+    public float lightPower = 1f;
     /** Туман поверх (как в Dark Souls), 0–1. */
     public float fog;
     /** Рябь, 0–1. */
@@ -274,6 +277,8 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         t.putString("color", color);
         t.putFloat("alpha", alpha);
         t.putBoolean("glow", glow);
+        t.putFloat("lightRange", lightRange);
+        t.putFloat("lightPower", lightPower);
         t.putFloat("fog", fog);
         t.putFloat("ripple", ripple);
         t.putString("rim", rim);
@@ -305,6 +310,8 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         color = hex(t.getString("color"), "000000");
         alpha = Mth.clamp(t.contains("alpha") ? t.getFloat("alpha") : 1f, 0f, 1f);
         glow = !t.contains("glow") || t.getBoolean("glow");
+        lightRange = Mth.clamp(t.contains("lightRange") ? t.getFloat("lightRange") : 6f, 0f, 24f);
+        lightPower = Mth.clamp(t.contains("lightPower") ? t.getFloat("lightPower") : 1f, 0f, 3f);
         fog = Mth.clamp(t.getFloat("fog"), 0f, 1f);
         ripple = Mth.clamp(t.getFloat("ripple"), 0f, 1f);
         rim = oneOf(t.getString("rim"), "none", "thin", "thick");
@@ -327,8 +334,8 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
             RpAnchors.get(sl.getServer()).remove(oldName, anchorOwner());
         }
         register(sl);
-        if (t.getBoolean("refreshPhoto")) PortalPhotoServer.markStale(link);
-        PortalPhotoServer.markStale(name);   // свой вид мог поменяться (размер, глубина) — переснять
+        // Снимок вида с выхода ЭТОГО портала (его показывают порталы, которые ведут сюда): по кнопке или после правок.
+        PortalPhotoServer.markStale(name);
         // Связали с порталом, у которого своей связи нет, — он сразу ведёт сюда (по умолчанию пара в обе стороны).
         PortalLinks.Entry target = links.find(link);
         if (target != null && target.link().isEmpty() && !name.isEmpty() && !target.name().equals(name)) {

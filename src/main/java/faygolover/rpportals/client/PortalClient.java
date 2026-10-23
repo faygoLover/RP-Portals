@@ -28,6 +28,7 @@ public final class PortalClient {
         modBus.addListener(PortalClient::onSetup);
         modBus.addListener(PortalClient::onOverlays);
         MinecraftForge.EVENT_BUS.addListener(PortalRender::onRenderLevel);
+        MinecraftForge.EVENT_BUS.addListener(PortalLight::onRenderLevel);
         MinecraftForge.EVENT_BUS.addListener(PortalCrossing::onClientTick);
         MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST, PortalPhotos::onRenderLevel);
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> {
@@ -71,6 +72,8 @@ public final class PortalClient {
                 .when(t -> !"invisible".equals(t.getString("look")) || t.getFloat("fog") > 0).text("color", 7)
                 .when("look", "solid", "").decimal("alpha", 0, 1)
                 .when(t -> !"invisible".equals(t.getString("look"))).bool("glow").decimal("ripple", 0, 1)
+                .when(t -> (!"invisible".equals(t.getString("look")) || t.getFloat("fog") > 0) && (!t.contains("glow") || t.getBoolean("glow")))
+                .decimal("lightRange", 0, 24).decimal("lightPower", 0, 3)
                 .when("look", "live", "photo").decimal("viewDepth", 2, 48).decimal("viewFog", 0, 1)
                 .always().decimal("fog", 0, 1).choice("rim", "none", "thin", "thick")
                 .when("rim", "thin", "thick").text("rimColor", 7)

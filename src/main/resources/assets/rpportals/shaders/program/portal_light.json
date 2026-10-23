@@ -1,0 +1,19 @@
+{
+  "blend": { "func": "add", "srcrgb": "one", "dstrgb": "zero" },
+  "vertex": "sobel",
+  "fragment": "rpportals:portal_light",
+  "attributes": ["Position"],
+  "samplers": [ { "name": "DiffuseSampler" }, { "name": "DiffuseDepthSampler" } ],
+  "uniforms": [
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] },
+    { "name": "InSize", "type": "float", "count": 2, "values": [1.0, 1.0] },
+    { "name": "OutSize", "type": "float", "count": 2, "values": [1.0, 1.0] },
+    { "name": "InvProjMat", "type": "matrix4x4", "count": 16, "values": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] },
+    { "name": "InvViewMat", "type": "matrix4x4", "count": 16, "values": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] },
+    { "name": "LightPos", "type": "matrix4x4", "count": 16, "values": [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
+    { "name": "LightDir", "type": "matrix4x4", "count": 16, "values": [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
+    { "name": "LightCol", "type": "matrix4x4", "count": 16, "values": [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
+    { "name": "LightExt", "type": "matrix4x4", "count": 16, "values": [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0] },
+    { "name": "LightCount", "type": "float", "count": 1, "values": [0.0] }
+  ]
+}

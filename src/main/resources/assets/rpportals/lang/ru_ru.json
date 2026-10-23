@@ -45,5 +45,7 @@
   "rpcore.gm.portal.place.front": "На переднем крае",
   "rpcore.gm.portal.place.back": "На заднем крае",
   "rpcore.gm.portal.look.photo": "Снимок той стороны",
-  "rpportals.gm.photo_refresh": "Обновить снимок той стороны"
+  "rpportals.gm.photo_refresh": "Обновить снимок этого портала",
+  "rpcore.gm.portal.lightRange": "Свет вокруг: радиус, блоков",
+  "rpcore.gm.portal.lightPower": "Свет вокруг: сила"
 }

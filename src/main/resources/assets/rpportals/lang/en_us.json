@@ -45,5 +45,7 @@
   "rpcore.gm.portal.place.front": "Front edge",
   "rpcore.gm.portal.place.back": "Back edge",
   "rpcore.gm.portal.look.photo": "Photo of the other side",
-  "rpportals.gm.photo_refresh": "Refresh photo of the other side"
+  "rpportals.gm.photo_refresh": "Refresh this portal's photo",
+  "rpcore.gm.portal.lightRange": "Light around: range, blocks",
+  "rpcore.gm.portal.lightPower": "Light around: power"
 }

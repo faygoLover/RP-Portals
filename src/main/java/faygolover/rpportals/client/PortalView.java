@@ -120,11 +120,17 @@ public final class PortalView {
         Matrix4f world = new Matrix4f(view.last().pose()).translate((float) -cam.x, (float) -cam.y, (float) -cam.z).mul(toSrc);
         double toPlane = cam.distanceTo(src.origin().add(0, src.height() / 2, 0));
         float fogStart = (float) toPlane + be.viewDepth * (1f - be.viewFog) * 0.9f, fogEnd = (float) toPlane + be.viewDepth;
-        b.draw(world, proj, rgb, fogStart, fogEnd);
+        int drawn = b.draw(world, proj, rgb, fogStart, fogEnd);
         b.drawEntities(level, view, cam, dst, src, partial);
         if (!dumped) {
             dumped = true;
             dump(target, "live");
+            // Куда на экране попадают середина проёма и середина той стороны (после переноса) — должны быть рядом.
+            Matrix4f vp = new Matrix4f(proj).mul(new Matrix4f(view.last().pose()).translate((float) -cam.x, (float) -cam.y, (float) -cam.z));
+            Vec3 portalMid = src.origin().add(0, src.height() / 2, 0);
+            Vec3 boxMid = dst.origin().add(0, dst.height() / 2, 0).add(dst.normal().scale(be.viewDepth / 2));   // world уже переносит
+            RpPortals.LOGGER.info("RP Portals: живой вид — слоёв нарисовано {}, экран: проём {}, та сторона {}, камера {}",
+                    drawn, ndc(vp, portalMid), ndc(new Matrix4f(proj).mul(world), boxMid), cam);
         }
         main.bindWrite(true);
         return target.getColorTextureId();
@@ -166,8 +172,9 @@ public final class PortalView {
         Matrix4f projSaved = new Matrix4f(RenderSystem.getProjectionMatrix());
         var sorting = RenderSystem.getVertexSorting();
         RenderSystem.setProjectionMatrix(proj, com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
-        b.draw(world, proj, fogRgb, PHOTO_DIST + depth * 0.6f, PHOTO_DIST + depth);
-        b.drawEntities(level, view, cam, exit, null, 1f);
+        // Без сущностей: снимок неподвижный, люди и мобы на нём только мешали бы.
+        int drawn = b.draw(world, proj, fogRgb, PHOTO_DIST + depth * 0.6f, PHOTO_DIST + depth);
+        Vec3 ahead = exit.origin().add(0, exit.height() / 2, 0).add(exit.normal().scale(depth / 2));
 
         NativeImage img = Screenshot.takeScreenshot(target);
         FloatBuffer zbuf = BufferUtils.createFloatBuffer(w * h);
@@ -184,12 +191,22 @@ public final class PortalView {
                 img.setPixelRGBA(x, y, (abgr & 0x00FFFFFF) | a << 24);
             }
         }
+        float minD = 1f;
+        for (int i = 0; i < w * h; i++) minD = Math.min(minD, zbuf.get(i));
+        RpPortals.LOGGER.info("RP Portals: снимок — слоёв нарисовано {}, ближайшая глубина {}, центр той стороны на снимке {}",
+                drawn, minD, ndc(new Matrix4f(proj).mul(world), ahead));
+        dump(target, "photo");
         RenderSystem.setProjectionMatrix(projSaved, sorting);
         main.bindWrite(true);
         return img;
     }
 
-    /** Отладка: один раз за запуск сохранить кадр той стороны в {@code rpportals_debug/<что>.png}. */
+    private static String ndc(Matrix4f m, Vec3 p) {
+        org.joml.Vector4f v = m.transform(new org.joml.Vector4f((float) p.x, (float) p.y, (float) p.z, 1f));
+        return String.format(java.util.Locale.ROOT, "(%.2f, %.2f, w=%.2f)", v.x / v.w, v.y / v.w, v.w);
+    }
+
+    /** Отладка: сохранить кадр той стороны в {@code rpportals_debug/<что>.png}. */
     static void dump(RenderTarget t, String what) {
         try (NativeImage img = Screenshot.takeScreenshot(t)) {
             java.nio.file.Path dir = Minecraft.getInstance().gameDirectory.toPath().resolve("rpportals_debug");
@@ -300,8 +317,9 @@ public final class PortalView {
             }
         }
 
-        /** Модель коробки; {@code world} — мир → вид (с камерой), туман цвета {@code rgb}. */
-        void draw(Matrix4f world, Matrix4f proj, int rgb, float fogStart, float fogEnd) {
+        /** Модель коробки; {@code world} — мир → вид (с камерой), туман цвета {@code rgb}. Возвращает, сколько слоёв нарисовано. */
+        int draw(Matrix4f world, Matrix4f proj, int rgb, float fogStart, float fogEnd) {
+            int drawn = 0;
             float fs0 = RenderSystem.getShaderFogStart(), fe0 = RenderSystem.getShaderFogEnd();
             float[] fc0 = RenderSystem.getShaderFogColor().clone();
             RenderSystem.setShaderFogStart(fogStart);
@@ -320,12 +338,14 @@ public final class PortalView {
                     vb.bind();
                     vb.drawWithShader(mv, proj, sh);
                     VertexBuffer.unbind();
+                    drawn++;
                 }
                 layer.clearRenderState();
             }
             RenderSystem.setShaderFogStart(fs0);
             RenderSystem.setShaderFogEnd(fe0);
             RenderSystem.setShaderFogColor(fc0[0], fc0[1], fc0[2], fc0[3]);
+            return drawn;
         }
 
         /** Сущности в коробке; {@code src} — куда переносить (живой вид), null — как есть (снимок). */

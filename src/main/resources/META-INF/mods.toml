@@ -29,3 +29,11 @@ description='''${mod_description}'''
     versionRange="[0.8.0,)"
     ordering="AFTER"
     side="BOTH"
+
+# FL Render: свет порталов (общий проход цветного света), шейдерпак, настройки графики. Только клиент.
+[[dependencies.${mod_id}]]
+    modId="flrender"
+    mandatory=true
+    versionRange="[0.1.0,)"
+    ordering="AFTER"
+    side="CLIENT"

@@ -43,13 +43,14 @@ minecraft {
 }
 
 repositories {
-    // RP Core — обязательная зависимость; jar в libs/ (в git не идёт).
+    // RP Core и FL Render — обязательные зависимости; jar'ы в libs/ (в git не идут).
     flatDir { dir 'libs' }
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation fg.deobf("blank:rpcore:${rpcore_version}")
+    implementation fg.deobf("blank:flrender:${flrender_version}")
 }
 
 tasks.named('processResources', ProcessResources).configure {

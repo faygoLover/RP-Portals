@@ -47,5 +47,9 @@
   "rpcore.gm.portal.look.photo": "Photo of the other side",
   "rpportals.gm.photo_refresh": "Refresh this portal's photo",
   "rpcore.gm.portal.lightRange": "Light around: range, blocks",
-  "rpcore.gm.portal.lightPower": "Light around: power"
+  "rpcore.gm.portal.lightPower": "Light around: power",
+  "flrender.technique.rpportals.live_view": "Portals: live view",
+  "flrender.technique.rpportals.live_view.tooltip": "A portal with the live look shows the other side every frame. Off = the portal's plain colour.",
+  "flrender.technique.rpportals.photo": "Portals: photo of the other side",
+  "flrender.technique.rpportals.photo.tooltip": "A portal with the photo look shows a picture of the other side with depth (parallax). Off = the portal's plain colour."
 }

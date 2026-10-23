@@ -47,5 +47,9 @@
   "rpcore.gm.portal.look.photo": "Снимок той стороны",
   "rpportals.gm.photo_refresh": "Обновить снимок этого портала",
   "rpcore.gm.portal.lightRange": "Свет вокруг: радиус, блоков",
-  "rpcore.gm.portal.lightPower": "Свет вокруг: сила"
+  "rpcore.gm.portal.lightPower": "Свет вокруг: сила",
+  "flrender.technique.rpportals.live_view": "Порталы: живой вид",
+  "flrender.technique.rpportals.live_view.tooltip": "Портал с видом «живой» показывает ту сторону каждый кадр. Выкл — сплошной цвет портала.",
+  "flrender.technique.rpportals.photo": "Порталы: снимок той стороны",
+  "flrender.technique.rpportals.photo.tooltip": "Портал с видом «снимок» показывает снимок той стороны с объёмом (параллакс). Выкл — сплошной цвет портала."
 }

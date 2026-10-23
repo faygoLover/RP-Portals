@@ -41,13 +41,13 @@ public final class PortalRender {
         ClientLevel level = mc.level;
         if (level == null || mc.player == null) return;
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS && GmTools.holdsMarker(mc.player)) gmOutlines(e, level);
-        RenderLevelStageEvent.Stage want = ShaderPacks.active() ? RenderLevelStageEvent.Stage.AFTER_LEVEL
+        RenderLevelStageEvent.Stage want = faygolover.flrender.api.FlRender.shaderPack() ? RenderLevelStageEvent.Stage.AFTER_LEVEL
                 : RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS;
         if (e.getStage() != want || shader == null) return;
         Vec3 cam = e.getCamera().getPosition();
         float partial = e.getPartialTick();
         // На AFTER_LEVEL Forge отдаёт стек с проекцией, а не с поворотом камеры — поворот строим сами.
-        PoseStack pose = want == RenderLevelStageEvent.Stage.AFTER_LEVEL ? faygolover.rpcore.client.gm.GmOverlay.cameraPose(e.getCamera())
+        PoseStack pose = want == RenderLevelStageEvent.Stage.AFTER_LEVEL ? faygolover.flrender.render.CameraPose.of(e.getCamera())
                 : e.getPoseStack();
         for (PortalBlockEntity be : PortalClientSet.snapshot()) {
             if (be.isRemoved() || be.getLevel() != level) continue;
@@ -58,11 +58,12 @@ public final class PortalRender {
             if (e.getFrustum() != null && !e.getFrustum().isVisible(PortalBlockEntity.planeBox(f))) continue;
             boolean front = f.toLocal(cam).z > 0;
             int view = -1, photo = -1;
-            if ("live".equals(be.look) && front && f.origin().distanceToSqr(cam) < 64 * 64) {
+            // Живой вид и снимок — техники FL Render; выключены (слабый ПК) — портал сплошного цвета.
+            if ("live".equals(be.look) && front && PortalTechniques.LIVE_VIEW.on() && f.origin().distanceToSqr(cam) < 64 * 64) {
                 if (PortalView.available(be, level)) view = PortalView.render(be, level, pose, e.getProjectionMatrix(), cam, partial);
                 else if (WARNED.add(be.getBlockPos())) faygolover.rpportals.RpPortals.LOGGER.info("RP Portals: живой вид у портала {} не показан — {}",
                         be.getBlockPos().toShortString(), PortalView.whyUnavailable(be, level));
-            } else if ("photo".equals(be.look) && front) {
+            } else if ("photo".equals(be.look) && front && PortalTechniques.PHOTO.on()) {
                 photo = PortalPhotos.texture(be.link);
             }
             draw(be, f, level, pose, cam, partial, view, photo);

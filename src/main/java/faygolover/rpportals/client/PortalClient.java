@@ -28,7 +28,8 @@ public final class PortalClient {
         modBus.addListener(PortalClient::onSetup);
         modBus.addListener(PortalClient::onOverlays);
         MinecraftForge.EVENT_BUS.addListener(PortalRender::onRenderLevel);
-        MinecraftForge.EVENT_BUS.addListener(PortalLight::onRenderLevel);
+        faygolover.flrender.render.WorldLight.provider(PortalLight::collect);
+        PortalTechniques.init();
         MinecraftForge.EVENT_BUS.addListener(PortalCrossing::onClientTick);
         MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST, PortalPhotos::onRenderLevel);
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> {

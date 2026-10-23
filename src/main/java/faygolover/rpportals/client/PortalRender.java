@@ -87,7 +87,7 @@ public final class PortalRender {
         set("ScreenSize", mc.getMainRenderTarget().width, mc.getMainRenderTarget().height);
         set("HasView", view >= 0 ? 1f : 0f);
         set("Photo", photo >= 0 ? 1f : 0f);
-        set("PhotoDepth", be.photoDepth);
+        set("PhotoDepth", PortalView.PHOTO_RANGE);
         Vec3 cl = f.toLocal(cam);
         set("CamLocal", (float) cl.x, (float) (cl.y - f.height() / 2), (float) cl.z);
 

@@ -45,9 +45,5 @@
   "rpcore.gm.portal.place.front": "На переднем крае",
   "rpcore.gm.portal.place.back": "На заднем крае",
   "rpcore.gm.portal.look.photo": "Снимок той стороны",
-  "rpcore.gm.portal.photoDepth": "Глубина снимка, блоков",
-  "rpportals.gm.photo": "Снимок отсюда (3 с)",
-  "rpportals.photo.saved": "Снимок для «%s» сохранён",
-  "rpportals.photo.no_name": "Сначала дайте порталу имя",
-  "rpportals.photo.countdown": "Снимок через %s… (смотрите туда, что увидят входящие)"
+  "rpportals.gm.photo_refresh": "Обновить снимок той стороны"
 }

@@ -29,7 +29,6 @@ public final class PortalClient {
         modBus.addListener(PortalClient::onOverlays);
         MinecraftForge.EVENT_BUS.addListener(PortalRender::onRenderLevel);
         MinecraftForge.EVENT_BUS.addListener(PortalCrossing::onClientTick);
-        MinecraftForge.EVENT_BUS.addListener(PortalPhotos::onClientTick);
         MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST, PortalPhotos::onRenderLevel);
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> {
             PortalClientSet.clear();
@@ -68,15 +67,16 @@ public final class PortalClient {
                 .choice("shape", "rect", "rounded", "oval")
                 .when("shape", "rounded").decimal("corner", 0, 0.5)
                 .always().choice("look", "solid", "live", "photo", "invisible")
-                .text("color", 7).decimal("alpha", 0, 1).bool("glow")
-                .decimal("fog", 0, 1).decimal("ripple", 0, 1)
-                .choice("rim", "none", "thin", "thick")
+                // Цвет — основа, туман и дымка той стороны; у невидимого без тумана ни на что не влияет.
+                .when(t -> !"invisible".equals(t.getString("look")) || t.getFloat("fog") > 0).text("color", 7)
+                .when("look", "solid", "").decimal("alpha", 0, 1)
+                .when(t -> !"invisible".equals(t.getString("look"))).bool("glow").decimal("ripple", 0, 1)
+                .when("look", "live", "photo").decimal("viewDepth", 2, 48).decimal("viewFog", 0, 1)
+                .always().decimal("fog", 0, 1).choice("rim", "none", "thin", "thick")
                 .when("rim", "thin", "thick").text("rimColor", 7)
-                .when("look", "live").decimal("viewDepth", 2, 48).decimal("viewFog", 0, 1)
-                .when("look", "photo").decimal("photoDepth", 0, 16)
                 .always().choice("sides", "front", "both").choice("who", "players", "all")
                 .integer("cooldown", 0, 1200)
-                .action("rpportals.gm.photo", t -> PortalPhotos.schedule(t.getString("name"), Math.max(0.1f, t.getFloat("width")) / Math.max(0.1f, t.getFloat("height"))))
+                .action("rpportals.gm.photo_refresh", t -> t.putBoolean("refreshPhoto", true))
                 .action("rpportals.gm.preset.door", t -> preset(t, "door"))
                 .action("rpportals.gm.preset.fog", t -> preset(t, "fog"))
                 .action("rpportals.gm.preset.portal", t -> preset(t, "portal"))));

@@ -45,9 +45,5 @@
   "rpcore.gm.portal.place.front": "Front edge",
   "rpcore.gm.portal.place.back": "Back edge",
   "rpcore.gm.portal.look.photo": "Photo of the other side",
-  "rpcore.gm.portal.photoDepth": "Photo depth, blocks",
-  "rpportals.gm.photo": "Photo from here (3 s)",
-  "rpportals.photo.saved": "Photo for \"%s\" saved",
-  "rpportals.photo.no_name": "Give the portal a name first",
-  "rpportals.photo.countdown": "Photo in %s… (look where arrivals will look)"
+  "rpportals.gm.photo_refresh": "Refresh photo of the other side"
 }

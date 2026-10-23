@@ -23,12 +23,13 @@ public class RpPortals {
         var modBus = FMLJavaModLoadingContext.get().getModEventBus();
         PortalRegistry.register(modBus);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(PortalPhotoServer::onLogout);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(PortalPhotoServer::onServerStopped);
         modBus.addListener(this::commonSetup);
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> faygolover.rpportals.client.PortalClient.init(modBus));
     }
 
     private void commonSetup(FMLCommonSetupEvent e) {
         PortalNet.register();
-        e.enqueueWork(() -> RpCoreAPI.registerModule(MODID, "порталы ведущего: проходы любого вида, бесшовный переход, двери"));
+        e.enqueueWork(() -> RpCoreAPI.registerModule(MODID, "порталы ведущего: проходы любого вида, бесшовный переход, вид той стороны"));
     }
 }

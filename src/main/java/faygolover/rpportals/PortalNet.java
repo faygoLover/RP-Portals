@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 public final class PortalNet {
     private PortalNet() {}
 
-    private static final String VERSION = "2";
+    private static final String VERSION = "3";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(new ResourceLocation(RpPortals.MODID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
 
@@ -29,6 +29,7 @@ public final class PortalNet {
         CHANNEL.registerMessage(id++, PhotoRequest.class, PhotoRequest::encode, PhotoRequest::decode, PhotoRequest::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, PhotoData.class, PhotoData::encode, PhotoData::decode, PhotoData::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, PhotoChanged.class, PhotoChanged::encode, PhotoChanged::decode, PhotoChanged::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, PhotoWanted.class, PhotoWanted::encode, PhotoWanted::decode, PhotoWanted::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     /**
@@ -60,7 +61,25 @@ public final class PortalNet {
         }
     }
 
-    /** Ведущий → сервер: кусок снимка (JPEG) вида с выхода портала {@code name}. */
+    /** Сервер → игроку у портала: снять вид с выхода портала {@code name} в {@code pos}. */
+    public record PhotoWanted(String name, BlockPos pos) {
+        static void encode(PhotoWanted m, FriendlyByteBuf b) {
+            b.writeUtf(m.name, 64);
+            b.writeBlockPos(m.pos);
+        }
+
+        static PhotoWanted decode(FriendlyByteBuf b) {
+            return new PhotoWanted(b.readUtf(64), b.readBlockPos());
+        }
+
+        static void handle(PhotoWanted m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> faygolover.rpportals.client.PortalPhotos.onWanted(m.name, m.pos)));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Клиент → сервер: кусок снимка (PNG: цвет + глубина в альфе) вида с выхода портала {@code name}. */
     public record PhotoChunk(String name, int index, int total, byte[] data) {
         public static final int SIZE = 28_000;
 

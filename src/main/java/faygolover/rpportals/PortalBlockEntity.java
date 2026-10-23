@@ -128,6 +128,10 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
             resolveLink(level);
             preload(level);
         }
+        // Снимок вида с выхода (для порталов, которые ведут сюда с видом «снимок»): нет или просили обновить — снять.
+        if (ticks % 100 == 7 && !name.isEmpty() && PortalPhotoServer.needs(level.getServer(), name)) {
+            PortalPhotoServer.maybeAsk(level, name, worldPosition, frame().origin());
+        }
         if ("all".equals(who) && linked()) moveEntities(level);
     }
 
@@ -323,6 +327,8 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
             RpAnchors.get(sl.getServer()).remove(oldName, anchorOwner());
         }
         register(sl);
+        if (t.getBoolean("refreshPhoto")) PortalPhotoServer.markStale(link);
+        PortalPhotoServer.markStale(name);   // свой вид мог поменяться (размер, глубина) — переснять
         // Связали с порталом, у которого своей связи нет, — он сразу ведёт сюда (по умолчанию пара в обе стороны).
         PortalLinks.Entry target = links.find(link);
         if (target != null && target.link().isEmpty() && !name.isEmpty() && !target.name().equals(name)) {

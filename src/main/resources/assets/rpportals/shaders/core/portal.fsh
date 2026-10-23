@@ -66,6 +66,44 @@ vec2 atDepth(vec2 p, float d) {
     return CamLocal.xy + (p - CamLocal.xy) * (cz + d) / cz;
 }
 
+// Photo of the other side: taken by a camera PHOTO_DIST in front of the face, its view PHOTO_MARGIN times the
+// portal size at the plane; alpha = depth behind the plane / PhotoDepth (the range). Same numbers as PortalView.
+const float PHOTO_DIST = 2.0;
+const float PHOTO_MARGIN = 1.25;
+
+vec2 photoUv(vec2 p, float zb) {
+    vec2 q = atDepth(p, zb);
+    vec2 view = Size * PHOTO_MARGIN;
+    float k = PHOTO_DIST / (zb + PHOTO_DIST);
+    return vec2(0.5 + q.x * k / view.x, 0.5 - q.y * k / view.y);
+}
+
+// March the view ray behind the plane until it goes behind the photographed surface, then refine.
+vec2 photoHit(vec2 p) {
+    float range = max(PhotoDepth, 0.5);
+    float prev = 0.0;
+    float z = 0.0;
+    bool hit = false;
+    for (int i = 1; i <= 40; i++) {
+        float t = float(i) / 40.0;
+        z = range * t * t;
+        float sd = texture(Sampler0, photoUv(p, z)).a * range;
+        if (z >= sd) {
+            hit = true;
+            break;
+        }
+        prev = z;
+    }
+    if (!hit) return photoUv(p, range);
+    float a = prev;
+    float b = z;
+    for (int k = 0; k < 6; k++) {
+        float m = (a + b) * 0.5;
+        if (m >= texture(Sampler0, photoUv(p, m)).a * range) b = m; else a = m;
+    }
+    return photoUv(p, b);
+}
+
 void main() {
     vec2 p = (texCoord0 - 0.5) * Size;
     float d = shapeDist(p);
@@ -85,13 +123,10 @@ void main() {
         col = texture(Sampler0, gl_FragCoord.xy / ScreenSize + wobble * 0.004 * Ripple).rgb;
         alpha = 1.0;
     } else if (Photo > 0.5) {
-        // The photo hangs PhotoDepth blocks behind the face and is that much bigger: it shifts like a window view.
-        float spread = 1.0 + PhotoDepth / 3.0;
-        vec2 q = atDepth(p, PhotoDepth) + wobble * 0.02 * Ripple;
-        vec2 uv = vec2(0.5 + q.x / (Size.x * spread), 0.5 - q.y / (Size.y * spread));
+        vec2 uv = photoHit(p + wobble * 0.02 * Ripple);
         col = texture(Sampler0, clamp(uv, 0.002, 0.998)).rgb;
         float edge = max(abs(uv.x - 0.5), abs(uv.y - 0.5));
-        col = mix(col, Color.rgb, smoothstep(0.45, 0.6, edge));
+        col = mix(col, Color.rgb, smoothstep(0.47, 0.55, edge));
         alpha = 1.0;
     } else {
         col = Color.rgb * (1.0 + (noise(p * 3.0 + wobble + Time * 0.2) - 0.5) * 0.25 * Ripple);

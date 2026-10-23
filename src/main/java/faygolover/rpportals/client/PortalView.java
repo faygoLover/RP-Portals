@@ -61,6 +61,8 @@ public final class PortalView {
     /** Коробки по плоскости цели (у одной цели может быть несколько входов). */
     private static final Map<PortalFrame, Box> BOXES = new HashMap<>();
     private static RenderTarget target;
+    /** Замеры и кадры в rpportals_debug — только с -Drpportals.debug=true. */
+    static final boolean DEBUG = Boolean.getBoolean("rpportals.debug");
     private static boolean dumped;
 
     private PortalView() {}
@@ -122,7 +124,7 @@ public final class PortalView {
         float fogStart = (float) toPlane + be.viewDepth * (1f - be.viewFog) * 0.9f, fogEnd = (float) toPlane + be.viewDepth;
         int drawn = b.draw(world, proj, rgb, fogStart, fogEnd);
         b.drawEntities(level, view, cam, dst, src, partial);
-        if (!dumped) {
+        if (DEBUG && !dumped) {
             dumped = true;
             dump(target, "live");
             // Куда на экране попадают середина проёма и середина той стороны (после переноса) — должны быть рядом.
@@ -191,11 +193,13 @@ public final class PortalView {
                 img.setPixelRGBA(x, y, (abgr & 0x00FFFFFF) | a << 24);
             }
         }
-        float minD = 1f;
-        for (int i = 0; i < w * h; i++) minD = Math.min(minD, zbuf.get(i));
-        RpPortals.LOGGER.info("RP Portals: снимок — слоёв нарисовано {}, ближайшая глубина {}, центр той стороны на снимке {}",
-                drawn, minD, ndc(new Matrix4f(proj).mul(world), ahead));
-        dump(target, "photo");
+        if (DEBUG) {
+            float minD = 1f;
+            for (int i = 0; i < w * h; i++) minD = Math.min(minD, zbuf.get(i));
+            RpPortals.LOGGER.info("RP Portals: снимок — слоёв нарисовано {}, ближайшая глубина {}, центр той стороны на снимке {}",
+                    drawn, minD, ndc(new Matrix4f(proj).mul(world), ahead));
+            dump(target, "photo");
+        }
         RenderSystem.setProjectionMatrix(projSaved, sorting);
         main.bindWrite(true);
         return img;
@@ -310,7 +314,7 @@ public final class PortalView {
                 VertexBuffer.unbind();
                 buffers.put(LAYERS[i], vb);
             }
-            if (!logged) {
+            if (DEBUG && !logged) {
                 logged = true;
                 RpPortals.LOGGER.info("RP Portals: та сторона — клеток {}, начало {}, вершин:{}", cells.size(), origin.toShortString(),
                         diag.length() == 0 ? " нет" : diag.toString());

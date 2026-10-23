@@ -39,15 +39,15 @@
   "rpcore.gm.portal.who": "Кого переносит",
   "rpcore.gm.portal.who.players": "Игроков",
   "rpcore.gm.portal.who.all": "Всех",
-  "rpcore.gm.portal.activation": "Включение",
-  "rpcore.gm.portal.activation.walk": "Просто войти",
-  "rpcore.gm.portal.activation.hold": "Держать ПКМ",
-  "rpcore.gm.portal.holdSeconds": "Держать, с",
-  "rpcore.gm.portal.openDoors": "Открывать двери в проёме",
-  "rpcore.gm.portal.openSeconds": "Открыто, с",
   "rpcore.gm.portal.cooldown": "Пауза после перехода, тиков",
   "rpcore.gm.portal.place": "Где в блоке",
   "rpcore.gm.portal.place.center": "По центру",
   "rpcore.gm.portal.place.front": "На переднем крае",
-  "rpcore.gm.portal.place.back": "На заднем крае"
+  "rpcore.gm.portal.place.back": "На заднем крае",
+  "rpcore.gm.portal.look.photo": "Снимок той стороны",
+  "rpcore.gm.portal.photoDepth": "Глубина снимка, блоков",
+  "rpportals.gm.photo": "Снимок отсюда (3 с)",
+  "rpportals.photo.saved": "Снимок для «%s» сохранён",
+  "rpportals.photo.no_name": "Сначала дайте порталу имя",
+  "rpportals.photo.countdown": "Снимок через %s… (смотрите туда, что увидят входящие)"
 }

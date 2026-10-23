@@ -21,10 +21,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -38,7 +36,7 @@ import java.util.UUID;
 
 /**
  * Портал: плоскость любого размера и формы над блоком-якорем, вид (цвет, туман, рябь, живой вид той стороны,
- * невидимый), связь с другим порталом по имени (по умолчанию двусторонняя), режим «держать ПКМ» с дверями.
+ * невидимый, снимок той стороны), связь с другим порталом по имени (по умолчанию двусторонняя).
  * Игроков переносит их клиент сразу при пересечении (бесшовно, сервер подтверждает), остальных сущностей — сервер.
  */
 public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
@@ -55,7 +53,7 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
     /** Форма: rect, rounded, oval. */
     public String shape = "rect";
     public float corner = 0.25f;
-    /** Основа: solid — цвет, live — та сторона вживую, invisible — ничего. */
+    /** Основа: solid — цвет, live — та сторона вживую, photo — снимок той стороны, invisible — ничего. */
     public String look = "solid";
     public String color = "000000";
     public float alpha = 1.0f;
@@ -70,15 +68,12 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
     /** Живой вид: сколько блоков той стороны видно и как быстро она уходит в туман цвета портала. */
     public float viewDepth = 12f;
     public float viewFog = 0.6f;
+    /** Снимок: на сколько блоков «за» плоскостью он висит (объём при взгляде сбоку). */
+    public float photoDepth = 4f;
     /** Проход: front — только с лица, both — с обеих сторон. */
     public String sides = "front";
     /** Кого переносит: players, all. */
     public String who = "players";
-    /** Включение: walk — просто войти, hold — держать ПКМ, глядя на портал. */
-    public String activation = "walk";
-    public float holdSeconds = 1.2f;
-    public boolean openDoors = true;
-    public float openSeconds = 4f;
     public int cooldown = 10;
 
     // ---------------------------------------------------------------- цель (сервер ищет по имени и рассылает)
@@ -86,9 +81,7 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
     @Nullable public PortalFrame linkFrame;
 
     // ---------------------------------------------------------------- сервер
-    private final Map<UUID, Long> activated = new HashMap<>();
     private final Map<UUID, Vec3> lastPos = new HashMap<>();
-    private final List<long[]> doors = new ArrayList<>();
     private boolean unloading;
     private int ticks;
 
@@ -124,13 +117,6 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         }
     }
 
-    /** Для игрока проход открыт (режим «держать ПКМ»: держал недавно). */
-    public boolean isOpenFor(Player p) {
-        if (!"hold".equals(activation)) return true;
-        Long until = activated.get(p.getUUID());
-        return until != null && until >= p.level().getGameTime();
-    }
-
     // ---------------------------------------------------------------- тик сервера
     static void serverTick(Level level, BlockPos pos, BlockState state, PortalBlockEntity be) {
         be.tick((ServerLevel) level);
@@ -138,21 +124,9 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
 
     private void tick(ServerLevel level) {
         ticks++;
-        long now = level.getGameTime();
         if (ticks % 40 == 0) {
             resolveLink(level);
             preload(level);
-            activated.values().removeIf(t -> t < now);
-        }
-        if (!doors.isEmpty()) {
-            for (var it = doors.iterator(); it.hasNext(); ) {
-                long[] d = it.next();
-                if (d[1] > now) continue;
-                it.remove();
-                BlockPos p = BlockPos.of(d[0]);
-                BlockState s = level.getBlockState(p);
-                if (s.getBlock() instanceof DoorBlock door && s.getValue(DoorBlock.OPEN)) door.setOpen(null, level, s, p, false);
-            }
         }
         if ("all".equals(who) && linked()) moveEntities(level);
     }
@@ -211,22 +185,6 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         if (to == null) return;
         ChunkPos cp = new ChunkPos(BlockPos.containing(linkFrame.origin()));
         to.getChunkSource().addRegionTicket(PRELOAD, cp, 2, cp);
-    }
-
-    /** Игрок подержал ПКМ: открыть проход ему и двери в проёме. */
-    void activate(ServerPlayer p) {
-        ServerLevel level = (ServerLevel) this.level;
-        long until = level.getGameTime() + (long) (openSeconds * 20) + 10;
-        activated.put(p.getUUID(), until);
-        if (!openDoors) return;
-        AABB box = planeBox(frame()).inflate(1.0);
-        BlockPos.betweenClosedStream(box).forEach(bp -> {
-            BlockState s = level.getBlockState(bp);
-            if (s.getBlock() instanceof DoorBlock door && s.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER) {
-                if (!s.getValue(DoorBlock.OPEN)) door.setOpen(p, level, s, bp.immutable(), true);
-                doors.add(new long[]{bp.asLong(), until});
-            }
-        });
     }
 
     // ---------------------------------------------------------------- связь и регистрация
@@ -318,12 +276,9 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         t.putString("rimColor", rimColor);
         t.putFloat("viewDepth", viewDepth);
         t.putFloat("viewFog", viewFog);
+        t.putFloat("photoDepth", photoDepth);
         t.putString("sides", sides);
         t.putString("who", who);
-        t.putString("activation", activation);
-        t.putFloat("holdSeconds", holdSeconds);
-        t.putBoolean("openDoors", openDoors);
-        t.putFloat("openSeconds", openSeconds);
         t.putInt("cooldown", cooldown);
         return t;
     }
@@ -341,7 +296,8 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         place = oneOf(t.getString("place"), "center", "front", "back");
         shape = oneOf(t.getString("shape"), "rect", "rounded", "oval");
         corner = Mth.clamp(t.contains("corner") ? t.getFloat("corner") : 0.25f, 0f, 0.5f);
-        look = oneOf(t.getString("look"), "solid", "live", "invisible");
+        look = oneOf(t.getString("look"), "solid", "live", "photo", "invisible");
+        photoDepth = Mth.clamp(t.contains("photoDepth") ? t.getFloat("photoDepth") : 4f, 0f, 16f);
         color = hex(t.getString("color"), "000000");
         alpha = Mth.clamp(t.contains("alpha") ? t.getFloat("alpha") : 1f, 0f, 1f);
         glow = !t.contains("glow") || t.getBoolean("glow");
@@ -353,10 +309,6 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         viewFog = Mth.clamp(t.contains("viewFog") ? t.getFloat("viewFog") : 0.6f, 0f, 1f);
         sides = oneOf(t.getString("sides"), "front", "both");
         who = oneOf(t.getString("who"), "players", "all");
-        activation = oneOf(t.getString("activation"), "walk", "hold");
-        holdSeconds = Mth.clamp(t.contains("holdSeconds") ? t.getFloat("holdSeconds") : 1.2f, 0.2f, 10f);
-        openDoors = !t.contains("openDoors") || t.getBoolean("openDoors");
-        openSeconds = Mth.clamp(t.contains("openSeconds") ? t.getFloat("openSeconds") : 4f, 0.5f, 60f);
         cooldown = Mth.clamp(t.contains("cooldown") ? t.getInt("cooldown") : 10, 0, 1200);
     }
 

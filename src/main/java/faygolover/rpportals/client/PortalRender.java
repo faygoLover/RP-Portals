@@ -34,6 +34,7 @@ public final class PortalRender {
     private PortalRender() {}
 
     static ShaderInstance shader;
+    private static final java.util.Set<net.minecraft.core.BlockPos> WARNED = new java.util.HashSet<>();
 
     static void onRenderLevel(RenderLevelStageEvent e) {
         Minecraft mc = Minecraft.getInstance();
@@ -45,6 +46,9 @@ public final class PortalRender {
         if (e.getStage() != want || shader == null) return;
         Vec3 cam = e.getCamera().getPosition();
         float partial = e.getPartialTick();
+        // На AFTER_LEVEL Forge отдаёт стек с проекцией, а не с поворотом камеры — поворот строим сами.
+        PoseStack pose = want == RenderLevelStageEvent.Stage.AFTER_LEVEL ? faygolover.rpcore.client.gm.GmOverlay.cameraPose(e.getCamera())
+                : e.getPoseStack();
         for (PortalBlockEntity be : PortalClientSet.snapshot()) {
             if (be.isRemoved() || be.getLevel() != level) continue;
             boolean plain = "invisible".equals(be.look) && be.fog <= 0 && "none".equals(be.rim);
@@ -53,15 +57,19 @@ public final class PortalRender {
             if (f.origin().distanceToSqr(cam) > 128 * 128) continue;
             if (e.getFrustum() != null && !e.getFrustum().isVisible(PortalBlockEntity.planeBox(f))) continue;
             boolean front = f.toLocal(cam).z > 0;
-            int view = -1;
-            if ("live".equals(be.look) && front && f.origin().distanceToSqr(cam) < 64 * 64 && PortalView.available(be, level)) {
-                view = PortalView.render(be, level, e.getPoseStack(), e.getProjectionMatrix(), cam, partial);
+            int view = -1, photo = -1;
+            if ("live".equals(be.look) && front && f.origin().distanceToSqr(cam) < 64 * 64) {
+                if (PortalView.available(be, level)) view = PortalView.render(be, level, pose, e.getProjectionMatrix(), cam, partial);
+                else if (WARNED.add(be.getBlockPos())) faygolover.rpportals.RpPortals.LOGGER.info("RP Portals: живой вид у портала {} не показан — {}",
+                        be.getBlockPos().toShortString(), PortalView.whyUnavailable(be, level));
+            } else if ("photo".equals(be.look) && front) {
+                photo = PortalPhotos.texture(be.link);
             }
-            draw(be, f, level, e.getPoseStack(), cam, partial, view);
+            draw(be, f, level, pose, cam, partial, view, photo);
         }
     }
 
-    private static void draw(PortalBlockEntity be, PortalFrame f, ClientLevel level, PoseStack pose, Vec3 cam, float partial, int view) {
+    private static void draw(PortalBlockEntity be, PortalFrame f, ClientLevel level, PoseStack pose, Vec3 cam, float partial, int view, int photo) {
         Minecraft mc = Minecraft.getInstance();
         int rgb = be.rgb(), rim = be.rimRgb();
         boolean invisibleBase = "invisible".equals(be.look);
@@ -78,13 +86,17 @@ public final class PortalRender {
         set("Light", be.glow ? 1f : light(level, f));
         set("ScreenSize", mc.getMainRenderTarget().width, mc.getMainRenderTarget().height);
         set("HasView", view >= 0 ? 1f : 0f);
+        set("Photo", photo >= 0 ? 1f : 0f);
+        set("PhotoDepth", be.photoDepth);
+        Vec3 cl = f.toLocal(cam);
+        set("CamLocal", (float) cl.x, (float) (cl.y - f.height() / 2), (float) cl.z);
 
         RenderSystem.setShader(() -> shader);
-        RenderSystem.setShaderTexture(0, view >= 0 ? view : MissingTextureAtlasSprite.getTexture().getId());
+        RenderSystem.setShaderTexture(0, view >= 0 ? view : photo >= 0 ? photo : MissingTextureAtlasSprite.getTexture().getId());
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.enableDepthTest();
-        boolean opaque = view >= 0 || (alpha >= 0.999f && be.fog <= 0f);
+        boolean opaque = view >= 0 || photo >= 0 || (alpha >= 0.999f && be.fog <= 0f);
         RenderSystem.depthMask(opaque);
         RenderSystem.disableCull();
 
@@ -110,6 +122,7 @@ public final class PortalRender {
         switch (v.length) {
             case 1 -> u.set(v[0]);
             case 2 -> u.set(v[0], v[1]);
+            case 3 -> u.set(v[0], v[1], v[2]);
             case 4 -> u.set(v[0], v[1], v[2], v[3]);
             default -> {}
         }

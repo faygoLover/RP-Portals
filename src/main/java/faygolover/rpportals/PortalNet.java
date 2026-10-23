@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
@@ -12,18 +14,21 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-/** Канал {@code rpportals:main}: клиент сообщает о пересечении портала и о «подержал ПКМ». */
+/** Канал {@code rpportals:main}: переход через портал, снимки той стороны. */
 public final class PortalNet {
     private PortalNet() {}
 
-    private static final String VERSION = "1";
+    private static final String VERSION = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(new ResourceLocation(RpPortals.MODID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
 
     public static void register() {
         int id = 0;
         CHANNEL.registerMessage(id++, Cross.class, Cross::encode, Cross::decode, Cross::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(id++, Activate.class, Activate::encode, Activate::decode, Activate::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, PhotoChunk.class, PhotoChunk::encode, PhotoChunk::decode, PhotoChunk::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, PhotoRequest.class, PhotoRequest::encode, PhotoRequest::decode, PhotoRequest::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, PhotoData.class, PhotoData::encode, PhotoData::decode, PhotoData::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, PhotoChanged.class, PhotoChanged::encode, PhotoChanged::decode, PhotoChanged::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     /**
@@ -55,21 +60,80 @@ public final class PortalNet {
         }
     }
 
-    /** Игрок подержал ПКМ на портале в режиме «держать». */
-    public record Activate(BlockPos pos) {
-        static void encode(Activate m, FriendlyByteBuf b) {
-            b.writeBlockPos(m.pos);
+    /** Ведущий → сервер: кусок снимка (JPEG) вида с выхода портала {@code name}. */
+    public record PhotoChunk(String name, int index, int total, byte[] data) {
+        public static final int SIZE = 28_000;
+
+        static void encode(PhotoChunk m, FriendlyByteBuf b) {
+            b.writeUtf(m.name, 64);
+            b.writeVarInt(m.index);
+            b.writeVarInt(m.total);
+            b.writeByteArray(m.data);
         }
 
-        static Activate decode(FriendlyByteBuf b) {
-            return new Activate(b.readBlockPos());
+        static PhotoChunk decode(FriendlyByteBuf b) {
+            return new PhotoChunk(b.readUtf(64), b.readVarInt(), b.readVarInt(), b.readByteArray(SIZE + 64));
         }
 
-        static void handle(Activate m, Supplier<NetworkEvent.Context> ctx) {
+        static void handle(PhotoChunk m, Supplier<NetworkEvent.Context> ctx) {
             var sp = ctx.get().getSender();
             ctx.get().enqueueWork(() -> {
-                if (sp != null) PortalServer.onActivate(sp, m.pos);
+                if (sp != null) PortalPhotoServer.onChunk(sp, m);
             });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Клиент → сервер: прислать снимок портала {@code name}. */
+    public record PhotoRequest(String name) {
+        static void encode(PhotoRequest m, FriendlyByteBuf b) {
+            b.writeUtf(m.name, 64);
+        }
+
+        static PhotoRequest decode(FriendlyByteBuf b) {
+            return new PhotoRequest(b.readUtf(64));
+        }
+
+        static void handle(PhotoRequest m, Supplier<NetworkEvent.Context> ctx) {
+            var sp = ctx.get().getSender();
+            ctx.get().enqueueWork(() -> {
+                if (sp != null) PortalPhotoServer.onRequest(sp, m.name);
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Сервер → клиенту: снимок (пустой — снимка нет). */
+    public record PhotoData(String name, byte[] data) {
+        static void encode(PhotoData m, FriendlyByteBuf b) {
+            b.writeUtf(m.name, 64);
+            b.writeByteArray(m.data);
+        }
+
+        static PhotoData decode(FriendlyByteBuf b) {
+            return new PhotoData(b.readUtf(64), b.readByteArray(PortalPhotoServer.MAX_BYTES));
+        }
+
+        static void handle(PhotoData m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> faygolover.rpportals.client.PortalPhotos.onData(m.name, m.data)));
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Сервер → всем: снимок портала {@code name} сменился. */
+    public record PhotoChanged(String name) {
+        static void encode(PhotoChanged m, FriendlyByteBuf b) {
+            b.writeUtf(m.name, 64);
+        }
+
+        static PhotoChanged decode(FriendlyByteBuf b) {
+            return new PhotoChanged(b.readUtf(64));
+        }
+
+        static void handle(PhotoChanged m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> faygolover.rpportals.client.PortalPhotos.forget(m.name)));
             ctx.get().setPacketHandled(true);
         }
     }

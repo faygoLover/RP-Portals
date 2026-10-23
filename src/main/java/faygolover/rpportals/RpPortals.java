@@ -22,6 +22,7 @@ public class RpPortals {
     public RpPortals() {
         var modBus = FMLJavaModLoadingContext.get().getModEventBus();
         PortalRegistry.register(modBus);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(PortalPhotoServer::onLogout);
         modBus.addListener(this::commonSetup);
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> faygolover.rpportals.client.PortalClient.init(modBus));
     }

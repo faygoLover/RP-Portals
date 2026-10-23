@@ -47,6 +47,7 @@ import java.util.WeakHashMap;
  */
 public final class PortalView {
     private static final RenderType[] LAYERS = {RenderType.solid(), RenderType.cutoutMipped(), RenderType.cutout(), RenderType.translucent()};
+    private static final String[] LAYER_NAMES = {"solid", "cutout_mipped", "cutout", "translucent"};
     private static final Map<PortalBlockEntity, PortalView> VIEWS = new WeakHashMap<>();
     private static RenderTarget target;
 
@@ -103,12 +104,20 @@ public final class PortalView {
         RenderSystem.setShaderFogEnd((float) toPlane + depth);
         RenderSystem.setShaderFogColor(r, g, b, 1f);
 
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         for (RenderType layer : LAYERS) {
             VertexBuffer vb = v.buffers.get(layer);
             if (vb == null) continue;
             layer.setupRenderState();
+            net.minecraft.client.renderer.ShaderInstance sh = RenderSystem.getShader();
+            if (sh == null) {
+                layer.clearRenderState();
+                continue;
+            }
+            // Шейдер блоков прибавляет сдвиг секции чанка — от отрисовки мира там могло остаться чужое значение.
+            if (sh.CHUNK_OFFSET != null) sh.CHUNK_OFFSET.set(0f, 0f, 0f);
             vb.bind();
-            vb.drawWithShader(mv, proj, RenderSystem.getShader());
+            vb.drawWithShader(mv, proj, sh);
             VertexBuffer.unbind();
             layer.clearRenderState();
         }
@@ -220,15 +229,31 @@ public final class PortalView {
                 brd.renderLiquid(p, level, new Offset(bb, ox, oy, oz), st, fs);
             }
         }
+        StringBuilder diag = new StringBuilder();
         for (RenderType rt : LAYERS) {
             BufferBuilder.RenderedBuffer rb = builders.get(rt).endOrDiscardIfEmpty();
             if (rb == null) continue;
+            diag.append(' ').append(LAYER_NAMES[java.util.Arrays.asList(LAYERS).indexOf(rt)]).append('=').append(rb.drawState().vertexCount());
             VertexBuffer vb = new VertexBuffer(VertexBuffer.Usage.STATIC);
             vb.bind();
             vb.upload(rb);
             VertexBuffer.unbind();
             buffers.put(rt, vb);
         }
+        if (!logged) {
+            logged = true;
+            faygolover.rpportals.RpPortals.LOGGER.info("RP Portals: живой вид — клеток {}, начало {}, вершин:{}", cells.size(), origin.toShortString(),
+                    diag.length() == 0 ? " нет" : diag.toString());
+        }
+    }
+
+    private boolean logged;
+
+    /** Почему живого вида нет (для лога, один раз на портал). */
+    static String whyUnavailable(PortalBlockEntity be, ClientLevel level) {
+        if (!be.linked()) return "портал не связан (нет цели по имени)";
+        if (!be.linkDim.equals(level.dimension())) return "цель в другом измерении";
+        return "чанки цели не загружены у клиента (далеко)";
     }
 
     private void close() {

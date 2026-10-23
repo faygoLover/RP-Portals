@@ -39,15 +39,15 @@
   "rpcore.gm.portal.who": "Moves",
   "rpcore.gm.portal.who.players": "Players",
   "rpcore.gm.portal.who.all": "Everyone",
-  "rpcore.gm.portal.activation": "Activation",
-  "rpcore.gm.portal.activation.walk": "Walk in",
-  "rpcore.gm.portal.activation.hold": "Hold right click",
-  "rpcore.gm.portal.holdSeconds": "Hold, s",
-  "rpcore.gm.portal.openDoors": "Open doors in the doorway",
-  "rpcore.gm.portal.openSeconds": "Open for, s",
   "rpcore.gm.portal.cooldown": "Cooldown after crossing, ticks",
   "rpcore.gm.portal.place": "Position in block",
   "rpcore.gm.portal.place.center": "Centre",
   "rpcore.gm.portal.place.front": "Front edge",
-  "rpcore.gm.portal.place.back": "Back edge"
+  "rpcore.gm.portal.place.back": "Back edge",
+  "rpcore.gm.portal.look.photo": "Photo of the other side",
+  "rpcore.gm.portal.photoDepth": "Photo depth, blocks",
+  "rpportals.gm.photo": "Photo from here (3 s)",
+  "rpportals.photo.saved": "Photo for \"%s\" saved",
+  "rpportals.photo.no_name": "Give the portal a name first",
+  "rpportals.photo.countdown": "Photo in %s… (look where arrivals will look)"
 }

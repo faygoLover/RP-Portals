@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.EnumSet;
 
 /**
- * Сервер: подтвердить переход игрока и «подержал ПКМ».
+ * Сервер: подтвердить переход игрока.
  * <p>
  * Бесшовно (то же измерение): клиент уже перенёс себя сам. Сервер ставит игрока туда же у себя ({@code moveTo}, без
  * пакета) и шлёт телепорт туда же с относительными флагами — сдвиг для клиента нулевой, он ничего не двигает, но сервер принимает его
@@ -22,8 +22,7 @@ public final class PortalServer {
     static void onCross(ServerPlayer sp, PortalNet.Cross m) {
         ServerLevel level = sp.serverLevel();
         BlockPos pos = m.pos();
-        if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof PortalBlockEntity be) || !be.linked()
-                || !be.isOpenFor(sp)) {
+        if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof PortalBlockEntity be) || !be.linked()) {
             resync(sp);
             return;
         }
@@ -53,14 +52,6 @@ public final class PortalServer {
         } else {
             GmTeleport.teleport(sp, to, dest, yaw, m.pitch(), false, be.cooldown);
         }
-    }
-
-    static void onActivate(ServerPlayer sp, BlockPos pos) {
-        ServerLevel level = sp.serverLevel();
-        if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof PortalBlockEntity be) || !"hold".equals(be.activation)) return;
-        PortalFrame f = be.frame();
-        if (sp.position().distanceToSqr(f.origin()) > Math.pow(Math.max(be.width, be.height) + 5, 2)) return;
-        be.activate(sp);
     }
 
     /** Вернуть клиенту место, где его видит сервер. */

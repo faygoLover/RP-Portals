@@ -50,6 +50,8 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
     public float yaw;
     public float width = 1.0f, height = 2.0f;
     public float offX, offY, offZ;
+    /** Где в блоке плоскость: front — передний край (со стороны лица), center, back — задний край. */
+    public String place = "center";
     /** Форма: rect, rounded, oval. */
     public String shape = "rect";
     public float corner = 0.25f;
@@ -96,8 +98,9 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
 
     public PortalFrame frame() {
         PortalFrame base = new PortalFrame(Vec3.ZERO, yaw, width, height);
+        float edge = "front".equals(place) ? 0.5f : "back".equals(place) ? -0.5f : 0f;
         Vec3 o = new Vec3(worldPosition.getX() + 0.5, worldPosition.getY(), worldPosition.getZ() + 0.5)
-                .add(base.right().scale(offX)).add(0, offY, 0).add(base.normal().scale(offZ));
+                .add(base.right().scale(offX)).add(0, offY, 0).add(base.normal().scale(offZ + edge));
         return new PortalFrame(o, yaw, width, height);
     }
 
@@ -302,6 +305,7 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         t.putFloat("offX", offX);
         t.putFloat("offY", offY);
         t.putFloat("offZ", offZ);
+        t.putString("place", place);
         t.putString("shape", shape);
         t.putFloat("corner", corner);
         t.putString("look", look);
@@ -334,6 +338,7 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         offX = Mth.clamp(t.getFloat("offX"), -8f, 8f);
         offY = Mth.clamp(t.getFloat("offY"), -8f, 8f);
         offZ = Mth.clamp(t.getFloat("offZ"), -8f, 8f);
+        place = oneOf(t.getString("place"), "center", "front", "back");
         shape = oneOf(t.getString("shape"), "rect", "rounded", "oval");
         corner = Mth.clamp(t.contains("corner") ? t.getFloat("corner") : 0.25f, 0f, 0.5f);
         look = oneOf(t.getString("look"), "solid", "live", "invisible");
@@ -390,6 +395,13 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
     private static String hex(String s, String def) {
         s = s.replace("#", "").strip().toUpperCase(java.util.Locale.ROOT);
         return s.matches("[0-9A-F]{6}") ? s : def;
+    }
+
+    /** Подпись — перед лицом портала, на уровне глаз (не внутри плоскости). */
+    @Override
+    public Vec3 markerLabelPos() {
+        PortalFrame f = frame();
+        return f.origin().add(f.normal().scale(0.7)).add(0, Math.min(f.height() - 0.1, 1.9), 0);
     }
 
     @Override

@@ -11,7 +11,7 @@
   "rpcore.gm.portal.height": "Height",
   "rpcore.gm.portal.offX": "Offset right",
   "rpcore.gm.portal.offY": "Offset up",
-  "rpcore.gm.portal.offZ": "Offset forward",
+  "rpcore.gm.portal.offZ": "Offset forward (fine)",
   "rpcore.gm.portal.shape": "Shape",
   "rpcore.gm.portal.shape.rect": "Rectangle",
   "rpcore.gm.portal.shape.rounded": "Rounded",
@@ -45,5 +45,9 @@
   "rpcore.gm.portal.holdSeconds": "Hold, s",
   "rpcore.gm.portal.openDoors": "Open doors in the doorway",
   "rpcore.gm.portal.openSeconds": "Open for, s",
-  "rpcore.gm.portal.cooldown": "Cooldown after crossing, ticks"
+  "rpcore.gm.portal.cooldown": "Cooldown after crossing, ticks",
+  "rpcore.gm.portal.place": "Position in block",
+  "rpcore.gm.portal.place.center": "Centre",
+  "rpcore.gm.portal.place.front": "Front edge",
+  "rpcore.gm.portal.place.back": "Back edge"
 }

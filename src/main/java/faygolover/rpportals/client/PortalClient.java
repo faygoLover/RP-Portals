@@ -77,6 +77,7 @@ public final class PortalClient {
         e.enqueueWork(() -> GmSchema.register(PortalRegistry.PORTAL.get(), new GmSchema("portal")
                 .text("name", 32).text("link", 32)
                 .decimal("yaw", -180, 180).decimal("width", 0.25, 32).decimal("height", 0.25, 32)
+                .choice("place", "center", "front", "back")
                 .decimal("offX", -8, 8).decimal("offY", -8, 8).decimal("offZ", -8, 8)
                 .choice("shape", "rect", "rounded", "oval")
                 .when("shape", "rounded").decimal("corner", 0, 0.5)

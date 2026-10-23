@@ -13,7 +13,7 @@ import java.util.EnumSet;
  * Сервер: подтвердить переход игрока и «подержал ПКМ».
  * <p>
  * Бесшовно (то же измерение): клиент уже перенёс себя сам. Сервер ставит игрока туда же у себя ({@code moveTo}, без
- * пакета) и шлёт «телепорт на 0 относительно» — клиент ничего не двигает, но с этого момента сервер принимает его
+ * пакета) и шлёт телепорт туда же с относительными флагами — сдвиг для клиента нулевой, он ничего не двигает, но сервер принимает его
  * новые координаты. Если сервер не согласен (нет портала, далеко, закрыто) — возвращает игрока на своё место.
  */
 public final class PortalServer {
@@ -43,9 +43,11 @@ public final class PortalServer {
         Vec3 dest = PortalFrame.mapPoint(f, t, at);
         float yaw = m.yaw() + PortalFrame.yawDelta(f, t);
         if (to == level && m.predicted()) {
+            // Сначала поставить у себя, потом «телепорт» в ту же точку с относительными флагами: сервер считает сдвиг
+            // от текущего места — он нулевой, клиент (уже перенёсший себя сам) не двигается.
             sp.moveTo(dest.x, dest.y, dest.z, yaw, m.pitch());
             sp.setDeltaMovement(PortalFrame.mapDir(f, t, sp.getDeltaMovement()));
-            sp.connection.teleport(0, 0, 0, 0, 0, EnumSet.allOf(RelativeMovement.class));
+            sp.connection.teleport(dest.x, dest.y, dest.z, yaw, m.pitch(), EnumSet.allOf(RelativeMovement.class));
             sp.resetFallDistance();
             GmTeleport.setCooldown(sp, be.cooldown);
         } else {

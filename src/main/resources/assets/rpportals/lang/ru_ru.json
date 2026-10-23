@@ -11,7 +11,7 @@
   "rpcore.gm.portal.height": "Высота",
   "rpcore.gm.portal.offX": "Сдвиг вправо",
   "rpcore.gm.portal.offY": "Сдвиг вверх",
-  "rpcore.gm.portal.offZ": "Сдвиг вперёд",
+  "rpcore.gm.portal.offZ": "Сдвиг вперёд (точнее)",
   "rpcore.gm.portal.shape": "Форма",
   "rpcore.gm.portal.shape.rect": "Прямоугольник",
   "rpcore.gm.portal.shape.rounded": "Скруглённый",
@@ -45,5 +45,9 @@
   "rpcore.gm.portal.holdSeconds": "Держать, с",
   "rpcore.gm.portal.openDoors": "Открывать двери в проёме",
   "rpcore.gm.portal.openSeconds": "Открыто, с",
-  "rpcore.gm.portal.cooldown": "Пауза после перехода, тиков"
+  "rpcore.gm.portal.cooldown": "Пауза после перехода, тиков",
+  "rpcore.gm.portal.place": "Где в блоке",
+  "rpcore.gm.portal.place.center": "По центру",
+  "rpcore.gm.portal.place.front": "На переднем крае",
+  "rpcore.gm.portal.place.back": "На заднем крае"
 }

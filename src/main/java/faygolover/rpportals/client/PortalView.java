@@ -280,7 +280,9 @@ public final class PortalView {
                 if (st.isAir()) continue;
                 if (st.getRenderShape() == RenderShape.MODEL) {
                     BakedModel model = brd.getBlockModel(st);
-                    ModelData md = model.getModelData(level, p, st, level.getModelDataManager().getAt(p));
+                    ModelData base = level.getModelDataManager().getAt(p);
+                    // null сюда нельзя: модели модов (Athena и др.) вызывают у него derive() и падают.
+                    ModelData md = model.getModelData(level, p, st, base == null ? ModelData.EMPTY : base);
                     if (md == null) md = ModelData.EMPTY;
                     long seed = st.getSeed(p);
                     rand.setSeed(seed);

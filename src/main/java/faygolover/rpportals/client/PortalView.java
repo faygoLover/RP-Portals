@@ -63,6 +63,9 @@ public final class PortalView {
     private static RenderTarget target;
     /** Замеры и кадры в rpportals_debug — только с -Drpportals.debug=true. */
     static final boolean DEBUG = Boolean.getBoolean("rpportals.debug");
+    /** {@code /rpportals debug}: замеры и кадры один раз, без флага запуска. */
+    static volatile boolean debugOnce;
+    static volatile boolean debugPhoto;
     private static boolean dumped;
 
     private PortalView() {}
@@ -124,8 +127,9 @@ public final class PortalView {
         float fogStart = (float) toPlane + be.viewDepth * (1f - be.viewFog) * 0.9f, fogEnd = (float) toPlane + be.viewDepth;
         int drawn = b.draw(world, proj, rgb, fogStart, fogEnd);
         b.drawEntities(level, view, cam, dst, src, partial);
-        if (DEBUG && !dumped) {
+        if ((DEBUG && !dumped) || debugOnce) {
             dumped = true;
+            debugOnce = false;
             dump(target, "live");
             // Куда на экране попадают середина проёма и середина той стороны (после переноса) — должны быть рядом.
             Matrix4f vp = new Matrix4f(proj).mul(new Matrix4f(view.last().pose()).translate((float) -cam.x, (float) -cam.y, (float) -cam.z));
@@ -193,7 +197,8 @@ public final class PortalView {
                 img.setPixelRGBA(x, y, (abgr & 0x00FFFFFF) | a << 24);
             }
         }
-        if (DEBUG) {
+        if (DEBUG || debugPhoto) {
+            debugPhoto = false;
             float minD = 1f;
             for (int i = 0; i < w * h; i++) minD = Math.min(minD, zbuf.get(i));
             RpPortals.LOGGER.info("RP Portals: снимок — слоёв нарисовано {}, ближайшая глубина {}, центр той стороны на снимке {}",
@@ -314,7 +319,7 @@ public final class PortalView {
                 VertexBuffer.unbind();
                 buffers.put(LAYERS[i], vb);
             }
-            if (DEBUG && !logged) {
+            if ((DEBUG || debugOnce) && !logged) {
                 logged = true;
                 RpPortals.LOGGER.info("RP Portals: та сторона — клеток {}, начало {}, вершин:{}", cells.size(), origin.toShortString(),
                         diag.length() == 0 ? " нет" : diag.toString());

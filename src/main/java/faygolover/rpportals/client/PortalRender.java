@@ -34,15 +34,17 @@ public final class PortalRender {
     private PortalRender() {}
 
     static ShaderInstance shader;
-    private static final java.util.Set<net.minecraft.core.BlockPos> WARNED = new java.util.HashSet<>();
 
     static void onRenderLevel(RenderLevelStageEvent e) {
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         if (level == null || mc.player == null) return;
         if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS && GmTools.holdsMarker(mc.player)) gmOutlines(e, level);
+        // Без шейдерпака — после блок-сущностей: этот этап вызывает сам Minecraft (не внутри отрисовки чанков
+        // Embeddium с чужим состоянием), и он раньше полупрозрачных блоков — их невидимые части (двери SCPO) не
+        // обрезают портал.
         RenderLevelStageEvent.Stage want = faygolover.flrender.api.FlRender.shaderPack() ? RenderLevelStageEvent.Stage.AFTER_LEVEL
-                : RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS;
+                : RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES;
         if (e.getStage() != want || shader == null) return;
         Vec3 cam = e.getCamera().getPosition();
         float partial = e.getPartialTick();
@@ -61,8 +63,11 @@ public final class PortalRender {
             // Живой вид и снимок — техники FL Render; выключены (слабый ПК) — портал сплошного цвета.
             if ("live".equals(be.look) && front && PortalTechniques.LIVE_VIEW.on() && f.origin().distanceToSqr(cam) < 64 * 64) {
                 if (PortalView.available(be, level)) view = PortalView.render(be, level, pose, e.getProjectionMatrix(), cam, partial);
-                else if (WARNED.add(be.getBlockPos())) faygolover.rpportals.RpPortals.LOGGER.info("RP Portals: живой вид у портала {} не показан — {}",
-                        be.getBlockPos().toShortString(), PortalView.whyUnavailable(be, level));
+                else if (PortalView.debugOnce) {
+                    PortalView.debugOnce = false;
+                    faygolover.rpportals.RpPortals.LOGGER.info("RP Portals: живой вид у портала {} не показан — {}",
+                            be.getBlockPos().toShortString(), PortalView.whyUnavailable(be, level));
+                }
             } else if ("photo".equals(be.look) && front && PortalTechniques.PHOTO.on()) {
                 photo = PortalPhotos.texture(be.link);
             }

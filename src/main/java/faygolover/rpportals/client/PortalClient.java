@@ -31,13 +31,46 @@ public final class PortalClient {
         faygolover.flrender.render.WorldLight.provider(PortalLight::collect);
         PortalTechniques.init();
         MinecraftForge.EVENT_BUS.addListener(PortalCrossing::onClientTick);
-        MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST, PortalPhotos::onRenderLevel);
+        MinecraftForge.EVENT_BUS.addListener(PortalPhotos::onClientTick);
+        MinecraftForge.EVENT_BUS.addListener(PortalClient::onClientCommands);
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> {
             PortalClientSet.clear();
             PortalCrossing.clear();
             PortalView.clearAll();
             PortalPhotos.clear();
         });
+    }
+
+    /**
+     * {@code /rpportals debug}: глядя на портал — замеры живого вида в лог и кадр в {@code rpportals_debug}, плюс
+     * пробный снимок цели ближайшего портала (только в папку, на сервер не уходит).
+     */
+    private static void onClientCommands(net.minecraftforge.client.event.RegisterClientCommandsEvent e) {
+        e.getDispatcher().register(net.minecraft.commands.Commands.literal("rpportals")
+                .then(net.minecraft.commands.Commands.literal("debug").executes(c -> {
+                    PortalView.debugOnce = true;
+                    var mc = net.minecraft.client.Minecraft.getInstance();
+                    faygolover.rpportals.PortalBlockEntity near = null;
+                    double best = 24 * 24;
+                    for (var be : PortalClientSet.snapshot()) {
+                        if (be.isRemoved() || mc.player == null) continue;
+                        double d = be.frame().origin().distanceToSqr(mc.player.position());
+                        if (d < best) {
+                            best = d;
+                            near = be;
+                        }
+                    }
+                    String what;
+                    if (near == null) what = "рядом нет портала";
+                    else {
+                        what = "портал " + near.getBlockPos().toShortString() + " «" + near.name + "» → «" + near.link + "», связан: " + near.linked()
+                                + ", вид: " + near.look + ", живой вид: " + PortalTechniques.LIVE_VIEW.on() + ", снимок: " + PortalTechniques.PHOTO.on();
+                        if (near.linked()) PortalPhotos.debugCapture(near.linkFrame, near.viewDepth, near.rgb());
+                    }
+                    RpPortals.LOGGER.info("RP Portals: /rpportals debug — {}", what);
+                    if (mc.player != null) mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal("RP Portals: " + what + " (подробности — в лог)"), false);
+                    return 1;
+                })));
     }
 
     private static void onShaders(RegisterShadersEvent e) {

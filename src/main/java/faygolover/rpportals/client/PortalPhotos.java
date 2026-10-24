@@ -70,13 +70,6 @@ public final class PortalPhotos {
     }
 
     // ---------------------------------------------------------------- снять по просьбе сервера
-    private static final Deque<Object[]> DEBUG = new ArrayDeque<>();
-
-    /** Пробный снимок плоскости {@code frame} — только в rpportals_debug (команда {@code /rpportals debug}). */
-    static void debugCapture(faygolover.rpportals.PortalFrame frame, float depth, int rgb) {
-        DEBUG.add(new Object[]{frame, depth, rgb});
-    }
-
     public static void onWanted(String name, BlockPos pos) {
         WANTED.add(new Object[]{name, pos});
     }
@@ -84,18 +77,6 @@ public final class PortalPhotos {
     /** Снимать в тике клиента — вне отрисовки мира, никакое её состояние не мешает; свой кадр. */
     static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent e) {
         if (e.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
-        if (!DEBUG.isEmpty()) {
-            Object[] d = DEBUG.poll();
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.level != null) {
-                PortalView.debugPhoto = true;
-                try (NativeImage img = PortalView.photo(mc.level, (faygolover.rpportals.PortalFrame) d[0], (Float) d[1], (Integer) d[2])) {
-                    RpPortals.LOGGER.info("RP Portals: пробный снимок {}×{} готов", img.getWidth(), img.getHeight());
-                } catch (Exception ex) {
-                    RpPortals.LOGGER.error("RP Portals: пробный снимок не получился", ex);
-                }
-            }
-        }
         if (WANTED.isEmpty()) return;
         Object[] w = WANTED.poll();
         String name = (String) w[0];

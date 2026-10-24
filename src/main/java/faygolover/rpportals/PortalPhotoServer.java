@@ -115,7 +115,7 @@ public final class PortalPhotoServer {
         STALE.remove(m.name());
         ASKED.remove(m.name());
         PortalNet.CHANNEL.send(PacketDistributor.ALL.noArg(), new PortalNet.PhotoChanged(m.name()));
-        RpPortals.LOGGER.info("RP Portals: снимок вида из портала «{}» обновлён ({} КБ, снял {})", m.name(), png.length / 1024, sp.getGameProfile().getName());
+        RpPortals.LOGGER.debug("RP Portals: снимок вида из портала «{}» обновлён ({} КБ, снял {})", m.name(), png.length / 1024, sp.getGameProfile().getName());
     }
 
     static void onRequest(ServerPlayer sp, String name) {

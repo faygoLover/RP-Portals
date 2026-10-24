@@ -63,11 +63,6 @@ public final class PortalRender {
             // Живой вид и снимок — техники FL Render; выключены (слабый ПК) — портал сплошного цвета.
             if ("live".equals(be.look) && front && PortalTechniques.LIVE_VIEW.on() && f.origin().distanceToSqr(cam) < 64 * 64) {
                 if (PortalView.available(be, level)) view = PortalView.render(be, level, pose, e.getProjectionMatrix(), cam, partial);
-                else if (PortalView.debugOnce) {
-                    PortalView.debugOnce = false;
-                    faygolover.rpportals.RpPortals.LOGGER.info("RP Portals: живой вид у портала {} не показан — {}",
-                            be.getBlockPos().toShortString(), PortalView.whyUnavailable(be, level));
-                }
             } else if ("photo".equals(be.look) && front && PortalTechniques.PHOTO.on()) {
                 photo = PortalPhotos.texture(be.link);
             }

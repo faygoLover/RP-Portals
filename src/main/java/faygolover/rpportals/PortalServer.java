@@ -44,9 +44,12 @@ public final class PortalServer {
         if (to == level && m.predicted()) {
             // Сначала поставить у себя, потом «телепорт» в ту же точку с относительными флагами: сервер считает сдвиг
             // от текущего места — он нулевой, клиент (уже перенёсший себя сам) не двигается.
+            // Если точка прибытия в ковре или плите — подъём на их верх: относительный сдвиг (0, подъём, 0) уходит
+            // и клиенту, он поднимается вместе с сервером.
+            Vec3 safe = GmTeleport.safeSpot(sp, to, dest);
             sp.moveTo(dest.x, dest.y, dest.z, yaw, m.pitch());
             sp.setDeltaMovement(PortalFrame.mapDir(f, t, sp.getDeltaMovement()));
-            sp.connection.teleport(dest.x, dest.y, dest.z, yaw, m.pitch(), EnumSet.allOf(RelativeMovement.class));
+            sp.connection.teleport(safe.x, safe.y, safe.z, yaw, m.pitch(), EnumSet.allOf(RelativeMovement.class));
             sp.resetFallDistance();
             GmTeleport.setCooldown(sp, be.cooldown);
         } else {

@@ -151,7 +151,7 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
             if (crossed(f, before, now)) {
                 ServerLevel to = level.getServer().getLevel(linkDim);
                 if (to != level) continue;   // в другое измерение — только игроки
-                Vec3 dest = PortalFrame.mapPoint(f, linkFrame, e.position());
+                Vec3 dest = GmTeleport.safeSpot(e, level, PortalFrame.mapPoint(f, linkFrame, e.position()));
                 Vec3 vel = PortalFrame.mapDir(f, linkFrame, e.getDeltaMovement());
                 e.teleportTo(dest.x, dest.y, dest.z);
                 e.setYRot(e.getYRot() + PortalFrame.yawDelta(f, linkFrame));

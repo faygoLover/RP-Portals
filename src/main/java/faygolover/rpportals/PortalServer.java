@@ -50,10 +50,15 @@ public final class PortalServer {
             sp.moveTo(dest.x, dest.y, dest.z, yaw, m.pitch());
             sp.setDeltaMovement(PortalFrame.mapDir(f, t, sp.getDeltaMovement()));
             sp.connection.teleport(safe.x, safe.y, safe.z, yaw, m.pitch(), EnumSet.allOf(RelativeMovement.class));
+            // Проверка скорости сервера считает сдвиг от точки начала тика (firstGood), а teleport её не трогает:
+            // подтверждение и шаг клиента в том же окне между тиками давали «moved too quickly» на всё расстояние
+            // между порталами и откат. Точка отсчёта — новое место.
+            sp.connection.resetPosition();
             sp.resetFallDistance();
             GmTeleport.setCooldown(sp, be.cooldown);
         } else {
             GmTeleport.teleport(sp, to, dest, yaw, m.pitch(), false, be.cooldown);
+            if (to == level) sp.connection.resetPosition();
         }
     }
 

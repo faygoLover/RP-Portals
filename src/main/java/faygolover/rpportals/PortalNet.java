@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 public final class PortalNet {
     private PortalNet() {}
 
-    private static final String VERSION = "3";
+    private static final String VERSION = "4";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(new ResourceLocation(RpPortals.MODID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
 
@@ -30,6 +30,7 @@ public final class PortalNet {
         CHANNEL.registerMessage(id++, PhotoData.class, PhotoData::encode, PhotoData::decode, PhotoData::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, PhotoChanged.class, PhotoChanged::encode, PhotoChanged::decode, PhotoChanged::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, PhotoWanted.class, PhotoWanted::encode, PhotoWanted::decode, PhotoWanted::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, Jump.class, Jump::encode, Jump::decode, Jump::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     /**
@@ -57,6 +58,27 @@ public final class PortalNet {
             ctx.get().enqueueWork(() -> {
                 if (sp != null) PortalServer.onCross(sp, m);
             });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+
+    /** Сервер → видящим: сущность {@code id} прошла портал — сразу на новое место, без скольжения. */
+    public record Jump(int id, double x, double y, double z, float yaw) {
+        static void encode(Jump m, FriendlyByteBuf b) {
+            b.writeVarInt(m.id);
+            b.writeDouble(m.x);
+            b.writeDouble(m.y);
+            b.writeDouble(m.z);
+            b.writeFloat(m.yaw);
+        }
+
+        static Jump decode(FriendlyByteBuf b) {
+            return new Jump(b.readVarInt(), b.readDouble(), b.readDouble(), b.readDouble(), b.readFloat());
+        }
+
+        static void handle(Jump m, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> faygolover.rpportals.client.PortalCrossing.onJump(m)));
             ctx.get().setPacketHandled(true);
         }
     }

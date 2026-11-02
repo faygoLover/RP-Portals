@@ -138,12 +138,13 @@ public class PortalBlockEntity extends BlockEntity implements GmConfigurable {
         if ("all".equals(who) && linked()) moveEntities(level);
     }
 
-    /** Сущности (не игроки) пересекли плоскость — перенести. */
+    /** Сущности (не игроки) пересекли плоскость — перенести. Везомая каталка и несомое тело идут только с ведущим. */
     private void moveEntities(ServerLevel level) {
         PortalFrame f = frame();
         AABB box = planeBox(f).inflate(1.5);
         Map<UUID, Vec3> seen = new HashMap<>();
-        for (Entity e : level.getEntities((Entity) null, box, e -> !(e instanceof Player) && !e.isPassenger() && !e.isVehicle())) {
+        for (Entity e : level.getEntities((Entity) null, box, e -> !(e instanceof Player) && !e.isPassenger() && !e.isVehicle()
+                && !MedicineCompat.attached(e))) {
             Vec3 now = e.position().add(0, Math.min(e.getBbHeight() / 2, 0.5), 0);
             Vec3 before = lastPos.get(e.getUUID());
             seen.put(e.getUUID(), now);

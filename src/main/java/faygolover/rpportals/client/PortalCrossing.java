@@ -3,9 +3,12 @@ package faygolover.rpportals.client;
 import faygolover.rpportals.PortalBlockEntity;
 import faygolover.rpportals.PortalClientSet;
 import faygolover.rpportals.PortalFrame;
+import faygolover.rpportals.MedicineCompat;
 import faygolover.rpportals.PortalNet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 
@@ -13,7 +16,7 @@ import net.minecraftforge.event.TickEvent;
  * Клиент: переход через портал. Бесшовно: в конце тика игрока клиент проверяет, пересёк ли он плоскость, и сразу
  * переносит себя сам — место, взгляд и скорость, и «прошлые» значения для плавной отрисовки, — а серверу сообщает,
  * где пересёк. Сервер ставит игрока туда же и подтверждает без рывка ({@code PortalServer}). В другое измерение —
- * обычный перенос сервером, с затемнением.
+ * обычный перенос сервером, с затемнением. Каталку, которую игрок везёт (RP Medicine), клиент переносит вместе с собой.
  */
 public final class PortalCrossing {
     private PortalCrossing() {}
@@ -60,6 +63,7 @@ public final class PortalCrossing {
         Vec3 prev = PortalFrame.mapPoint(f, t, new Vec3(p.xo, p.yo, p.zo));
         Vec3 old = PortalFrame.mapPoint(f, t, new Vec3(p.xOld, p.yOld, p.zOld));
         Vec3 vel = PortalFrame.mapDir(f, t, p.getDeltaMovement());
+        Entity cart = MedicineCompat.pushedCart(p);
         p.setPos(dest.x, dest.y, dest.z);
         p.xo = prev.x;
         p.yo = prev.y;
@@ -76,6 +80,39 @@ public final class PortalCrossing {
         p.yHeadRotO += dy;
         p.yBob += dy;
         p.yBobO += dy;
+        // Везомая каталка едет за везущим сама (пакеты движения не слушает) — переставить её туда же; сервер поправит.
+        if (cart != null) {
+            Vec3 c = PortalFrame.mapPoint(f, t, cart.position());
+            place(cart, c.x, c.y, c.z, cart.getYRot() + dy);
+        }
+    }
+
+    /** Сервер: сущность прошла портал — сразу туда, без скольжения и без интерполяции через полкарты. */
+    public static void onJump(PortalNet.Jump m) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        Entity e = mc.level.getEntity(m.id());
+        if (e == null || e == mc.player) return;
+        place(e, m.x(), m.y(), m.z(), m.yaw());
+        // Ожидающая плавная подводка (пакеты до переноса) — в ту же точку.
+        if (e instanceof LivingEntity le) le.lerpTo(m.x(), m.y(), m.z(), m.yaw(), le.getXRot(), 1, true);
+    }
+
+    private static void place(Entity e, double x, double y, double z, float yaw) {
+        e.syncPacketPositionCodec(x, y, z);
+        e.setPos(x, y, z);
+        e.xo = e.xOld = x;
+        e.yo = e.yOld = y;
+        e.zo = e.zOld = z;
+        float dy = yaw - e.getYRot();
+        e.setYRot(yaw);
+        e.yRotO += dy;
+        if (e instanceof LivingEntity le) {
+            le.yBodyRot += dy;
+            le.yBodyRotO += dy;
+            le.yHeadRot += dy;
+            le.yHeadRotO += dy;
+        }
     }
 
     static void clear() {

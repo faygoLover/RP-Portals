@@ -51,6 +51,9 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation fg.deobf("blank:rpcore:${rpcore_version}")
     implementation fg.deobf("blank:flrender:${flrender_version}")
+    // RP Medicine — мягкая зависимость: каталка и несомое тело идут через портал с ведущим (MedicineCompat).
+    // В игре не обязателен; в dev-запуске есть, чтобы GameTest проверял перенос каталки и тела.
+    implementation fg.deobf("blank:rpmedicine:${rpmedicine_version}")
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -85,6 +88,9 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
+    // Игровые тесты и их площадка в сборку для игроков не идут.
+    exclude 'faygolover/rpportals/gametest/**', 'data/rpportals/structures/**'
+
     finalizedBy 'reobfJar'
 }
 

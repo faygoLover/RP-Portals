@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 public final class PortalNet {
     private PortalNet() {}
 
-    private static final String VERSION = "4";
+    private static final String VERSION = "5";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(new ResourceLocation(RpPortals.MODID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
 
@@ -36,9 +36,10 @@ public final class PortalNet {
     /**
      * Игрок пересёк портал в {@code pos}; {@code before}, {@code yaw}, {@code pitch} — где он был и куда смотрел в момент
      * пересечения, до переноса (по его клиенту). {@code predicted} —
-     * клиент уже перенёс себя сам (то же измерение): сервер лишь подтверждает, не дёргая камеру.
+     * клиент уже перенёс себя сам (то же измерение): сервер лишь подтверждает, не дёргая камеру. {@code vehicle} —
+     * плоскость пересекло кресло, которым игрок правит сам: {@code before} — место кресла, клиент перенёс его.
      */
-    public record Cross(BlockPos pos, Vec3 before, float yaw, float pitch, boolean predicted) {
+    public record Cross(BlockPos pos, Vec3 before, float yaw, float pitch, boolean predicted, boolean vehicle) {
         static void encode(Cross m, FriendlyByteBuf b) {
             b.writeBlockPos(m.pos);
             b.writeDouble(m.before.x);
@@ -47,10 +48,12 @@ public final class PortalNet {
             b.writeFloat(m.yaw);
             b.writeFloat(m.pitch);
             b.writeBoolean(m.predicted);
+            b.writeBoolean(m.vehicle);
         }
 
         static Cross decode(FriendlyByteBuf b) {
-            return new Cross(b.readBlockPos(), new Vec3(b.readDouble(), b.readDouble(), b.readDouble()), b.readFloat(), b.readFloat(), b.readBoolean());
+            return new Cross(b.readBlockPos(), new Vec3(b.readDouble(), b.readDouble(), b.readDouble()), b.readFloat(), b.readFloat(), b.readBoolean(),
+                    b.readBoolean());
         }
 
         static void handle(Cross m, Supplier<NetworkEvent.Context> ctx) {

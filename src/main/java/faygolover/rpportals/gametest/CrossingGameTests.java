@@ -17,10 +17,12 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -28,8 +30,9 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.UUID;
 
 /**
- * Переход через портал на сервере (02.11.2026): G2 — после переноса шаг клиента не считается «moved too quickly»;
- * Ж3 — везомая каталка с пассажиром идёт с везущим; Ж4 — несомое тело идёт с несущим (и несущий — с телом, если
+ * Переход через портал на сервере (02–03.11.2026): G2 — после переноса шаг клиента не считается «moved too quickly»;
+ * Ж3 — везомая каталка с пассажиром идёт с везущим разом (и в другое измерение) и встаёт перед ним, кресло без
+ * везущего идёт с сидящим; Ж4 — несомое тело идёт с несущим (и несущий — с телом, если
  * плоскость первым пересекло оно). Порталы здесь — только пара плоскостей: вход смотрит на +Z, выход — в 12 блоках
  * по X лицом на −Z, перенос — сдвиг на +12 по X без поворота. Клиентское (прыжок у видящих) здесь не проверить.
  */
@@ -107,20 +110,27 @@ public final class CrossingGameTests {
         h.succeed();
     }
 
-    /** Ж3: кресло с сидящим идёт через портал с везущим; везёт дальше, сидящий в кресле. */
+    /** Ж3: кресло с сидящим идёт через портал с везущим и встаёт перед ним; везёт дальше, сидящий в кресле. */
     @GameTest(template = T, timeoutTicks = 100)
     public static void pushedWheelchairCrossesWithRider(GameTestHelper h) {
-        crossCart(h, ModEntities.WHEELCHAIR.get(), true);
+        crossCart(h, ModEntities.WHEELCHAIR.get(), true, false);
     }
 
     /** Ж3: пустая каталка идёт с везущим и сама в портал не уходит. */
     @GameTest(template = T, timeoutTicks = 100)
     public static void pushedEmptyStretcherCrosses(GameTestHelper h) {
-        crossCart(h, ModEntities.STRETCHER.get(), false);
+        crossCart(h, ModEntities.STRETCHER.get(), false, false);
     }
 
-    private static void crossCart(GameTestHelper h, EntityType<MedCartEntity> type, boolean withRider) {
-        PortalFrame f = in(h), t = out(h);
+    /** Ж3: в другое измерение — все трое разом: везущий, кресло перед ним, сидящий в кресле. */
+    @GameTest(template = T, timeoutTicks = 200)
+    public static void pushedWheelchairCrossesToNether(GameTestHelper h) {
+        crossCart(h, ModEntities.WHEELCHAIR.get(), true, true);
+    }
+
+    private static void crossCart(GameTestHelper h, EntityType<MedCartEntity> type, boolean withRider, boolean nether) {
+        ServerLevel to = nether ? h.getLevel().getServer().getLevel(Level.NETHER) : h.getLevel();
+        PortalFrame f = in(h), t = nether ? new PortalFrame(new Vec3(0.5, 70, 0.5), 180f, 3, 3) : out(h);
         MedCartEntity c = type.create(h.getLevel());
         Vec3 cv = h.absoluteVec(new Vec3(3.5, 2, 3.5));
         c.moveTo(cv.x, cv.y, cv.z, 0, 0);
@@ -134,20 +144,45 @@ public final class CrossingGameTests {
         c.interact(pusher, InteractionHand.MAIN_HAND);
         h.assertTrue(c.pusher() == pusher, "взялся за ручки");
         h.assertTrue(MedicineCompat.attached(c), "везомая каталка сама порталом не переносится");
-        double cx = c.getX(), rx = rider != null ? rider.getX() : 0;
-        PortalServer.cross(pusher, h.getLevel(), f, t, pusher.position(), 0f, 0f, true, 10);
-        h.assertTrue(near(c.getX(), cx + SHIFT), "каталка у выхода, dx=" + (c.getX() - cx));
+        PortalServer.cross(pusher, to, f, t, pusher.position(), 0f, 0f, !nether, 10);
+        h.assertTrue(pusher.level() == to, "везущий прошёл");
+        MedCartEntity now = MedCartEntity.pushedBy(pusher);
+        h.assertTrue(now != null && !now.isRemoved() && now.level() == to && now.pusher() == pusher, "везёт дальше, по ту сторону");
+        Vec3 want = MedicineCompat.cartSpot(now, pusher.position(), pusher.getYRot());
+        h.assertTrue(near(now.getX(), want.x) && near(now.getZ(), want.z),
+                "каталка перед везущим, а не в нём: dx=" + (now.getX() - want.x) + " dz=" + (now.getZ() - want.z));
         if (rider != null) {
-            h.assertTrue(rider.getVehicle() == c, "сидящий в кресле");
-            h.assertTrue(near(rider.getX(), rx + SHIFT), "сидящий у выхода вместе с креслом");
+            h.assertTrue(rider.level() == to && rider.getVehicle() == now, "сидящий в кресле");
+            h.assertTrue(rider.position().distanceTo(now.position()) < 1.5, "сидящий там же, где кресло");
         }
-        c.tick();
-        h.assertTrue(c.pusher() == pusher && MedCartEntity.pushedBy(pusher) == c, "везёт дальше");
-        c.release();
+        now.tick();
+        h.assertTrue(now.pusher() == pusher, "после тика везёт дальше");
+        now.release();
         if (rider != null) MedCartEntity.unseat(rider);
-        c.discard();
+        now.discard();
         if (rider != null) remove(h, rider);
         remove(h, pusher);
+        h.succeed();
+    }
+
+    /** Кресло, которым правит сам сидящий (без везущего), проходит портал с ним. */
+    @GameTest(template = T, timeoutTicks = 100)
+    public static void selfDrivenWheelchairCrosses(GameTestHelper h) {
+        PortalFrame f = in(h), t = out(h);
+        MedCartEntity c = ModEntities.WHEELCHAIR.get().create(h.getLevel());
+        Vec3 cv = h.absoluteVec(new Vec3(3.5, 2, 3.5));
+        c.moveTo(cv.x, cv.y, cv.z, 0, 0);
+        h.getLevel().addFreshEntity(c);
+        ServerPlayer rider = player(h, 3.5, 4.8);
+        c.interact(rider, InteractionHand.MAIN_HAND);
+        h.assertTrue(rider.getVehicle() == c && c.getControllingPassenger() == rider, "сел и правит сам");
+        double cx = c.getX();
+        PortalServer.cross(rider, h.getLevel(), f, t, c.position(), 0f, 0f, true, 10);
+        h.assertTrue(near(c.getX(), cx + SHIFT), "кресло у выхода, dx=" + (c.getX() - cx));
+        h.assertTrue(rider.getVehicle() == c && rider.position().distanceTo(c.position()) < 1.5, "сидящий в кресле");
+        MedCartEntity.unseat(rider);
+        c.discard();
+        remove(h, rider);
         h.succeed();
     }
 

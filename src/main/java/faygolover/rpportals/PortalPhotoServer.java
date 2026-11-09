@@ -32,6 +32,14 @@ public final class PortalPhotoServer {
     private PortalPhotoServer() {}
 
     static final int MAX_BYTES = 900_000;
+    /** Сторона снимка: как {@code PortalView.PHOTO_MAX} на клиенте. */
+    private static final int MAX_SIDE = 384;
+    /** Лимит раздачи на игрока за окно; отброшенный запрос клиент повторит сам через 15 с. */
+    private static final long REQUEST_WINDOW_MS = 10_000L;
+    private static final int MAX_REQUESTS = 50;
+    private static final long MAX_SENT_BYTES = 8_000_000L;
+    /** Окно раздачи: начало, запросов, отправлено байт. */
+    private static final Map<UUID, long[]> REQUESTS = new HashMap<>();
     private static final Map<UUID, ByteArrayOutputStream> UPLOADS = new HashMap<>();
     private static final Map<UUID, String> UPLOAD_NAME = new HashMap<>();
     /** Есть ли снимок (кэш проверки файла). */
@@ -104,7 +112,7 @@ public final class PortalPhotoServer {
         UPLOADS.remove(id);
         UPLOAD_NAME.remove(id);
         byte[] png = out.toByteArray();
-        if (png.length < 8 || (png[0] & 0xFF) != 0x89 || png[1] != 'P' || png[2] != 'N' || png[3] != 'G') return;   // только PNG
+        if (!validPng(png)) return;
         try {
             Files.write(file(sp.server, m.name()), png);
         } catch (Exception ex) {
@@ -118,7 +126,26 @@ public final class PortalPhotoServer {
         RpPortals.LOGGER.debug("RP Portals: снимок вида из портала «{}» обновлён ({} КБ, снял {})", m.name(), png.length / 1024, sp.getGameProfile().getName());
     }
 
+    /** Только PNG: подпись, заголовок IHDR и стороны снимка, какие снимает клиент. */
+    private static boolean validPng(byte[] png) {
+        if (png.length < 24) return false;
+        byte[] sig = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        for (int i = 0; i < sig.length; i++) if (png[i] != sig[i]) return false;
+        if (png[12] != 'I' || png[13] != 'H' || png[14] != 'D' || png[15] != 'R') return false;
+        var head = java.nio.ByteBuffer.wrap(png);
+        int w = head.getInt(16), h = head.getInt(20);
+        return w > 0 && h > 0 && w <= MAX_SIDE && h <= MAX_SIDE;
+    }
+
     static void onRequest(ServerPlayer sp, String name) {
+        long now = System.currentTimeMillis();
+        long[] window = REQUESTS.computeIfAbsent(sp.getUUID(), k -> new long[]{now, 0, 0});
+        if (now - window[0] >= REQUEST_WINDOW_MS) {
+            window[0] = now;
+            window[1] = 0;
+            window[2] = 0;
+        }
+        if (++window[1] > MAX_REQUESTS || window[2] >= MAX_SENT_BYTES) return;
         byte[] data = new byte[0];
         try {
             Path f = file(sp.server, name);
@@ -126,17 +153,20 @@ public final class PortalPhotoServer {
         } catch (Exception ex) {
             RpPortals.LOGGER.warn("RP Portals: снимок «{}» не прочитан", name, ex);
         }
+        window[2] += data.length;
         PortalNet.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sp), new PortalNet.PhotoData(name, data));
     }
 
     static void onLogout(PlayerEvent.PlayerLoggedOutEvent e) {
         UPLOADS.remove(e.getEntity().getUUID());
         UPLOAD_NAME.remove(e.getEntity().getUUID());
+        REQUESTS.remove(e.getEntity().getUUID());
     }
 
     static void onServerStopped(net.minecraftforge.event.server.ServerStoppedEvent e) {
         UPLOADS.clear();
         UPLOAD_NAME.clear();
+        REQUESTS.clear();
         EXISTS.clear();
         STALE.clear();
         ASKED.clear();

@@ -51,7 +51,9 @@ public final class PortalRender {
         // На AFTER_LEVEL Forge отдаёт стек с проекцией, а не с поворотом камеры — поворот строим сами.
         PoseStack pose = want == RenderLevelStageEvent.Stage.AFTER_LEVEL ? faygolover.flrender.render.CameraPose.of(e.getCamera())
                 : e.getPoseStack();
-        for (PortalBlockEntity be : PortalClientSet.snapshot()) {
+        PortalBlockEntity[] portals = PortalClientSet.snapshot();
+        java.util.Set<PortalBlockEntity> live = nearestLive(portals, level, cam, e);
+        for (PortalBlockEntity be : portals) {
             if (be.isRemoved() || be.getLevel() != level) continue;
             boolean plain = "invisible".equals(be.look) && be.fog <= 0 && "none".equals(be.rim);
             if (plain) continue;
@@ -61,13 +63,26 @@ public final class PortalRender {
             boolean front = f.toLocal(cam).z > 0;
             int view = -1, photo = -1;
             // Живой вид и снимок — техники FL Render; выключены (слабый ПК) — портал сплошного цвета.
-            if ("live".equals(be.look) && front && PortalTechniques.LIVE_VIEW.on() && f.origin().distanceToSqr(cam) < 64 * 64) {
+            if ("live".equals(be.look) && front && PortalTechniques.LIVE_VIEW.on() && live.contains(be)) {
                 if (PortalView.available(be, level)) view = PortalView.render(be, level, pose, e.getProjectionMatrix(), cam, partial);
             } else if ("photo".equals(be.look) && front && PortalTechniques.PHOTO.on()) {
                 photo = PortalPhotos.texture(be.link);
             }
             draw(be, f, level, pose, cam, partial, view, photo);
         }
+    }
+
+    /** Живой вид — отдельный проход по миру, поэтому только у двух ближайших видимых порталов; остальные сплошного цвета. */
+    private static java.util.Set<PortalBlockEntity> nearestLive(PortalBlockEntity[] portals, ClientLevel level, Vec3 cam, RenderLevelStageEvent e) {
+        java.util.List<PortalBlockEntity> found = new java.util.ArrayList<>();
+        for (PortalBlockEntity be : portals) {
+            if (be.isRemoved() || be.getLevel() != level || !"live".equals(be.look)) continue;
+            PortalFrame f = be.frame();
+            if (f.origin().distanceToSqr(cam) >= 64 * 64 || f.toLocal(cam).z <= 0) continue;
+            if (e.getFrustum() == null || e.getFrustum().isVisible(PortalBlockEntity.planeBox(f))) found.add(be);
+        }
+        found.sort(java.util.Comparator.comparingDouble(be -> be.frame().origin().distanceToSqr(cam)));
+        return new java.util.HashSet<>(found.subList(0, Math.min(2, found.size())));
     }
 
     private static void draw(PortalBlockEntity be, PortalFrame f, ClientLevel level, PoseStack pose, Vec3 cam, float partial, int view, int photo) {

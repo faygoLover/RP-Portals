@@ -35,6 +35,9 @@ public final class PortalServer {
     private PortalServer() {}
 
     private static final EnumSet<RelativeMovement> RELATIVE = EnumSet.allOf(RelativeMovement.class);
+    /** Сдвиг по горизонтали и взгляд — относительно, высота — точно (клиент встаёт на тот же пол, что и сервер). */
+    private static final EnumSet<RelativeMovement> RELATIVE_XZ =
+            EnumSet.of(RelativeMovement.X, RelativeMovement.Z, RelativeMovement.Y_ROT, RelativeMovement.X_ROT);
 
     static void onCross(ServerPlayer sp, PortalNet.Cross m) {
         ServerLevel level = sp.serverLevel();
@@ -100,7 +103,7 @@ public final class PortalServer {
         Vec3 safe = GmTeleport.safeSpot(sp, sp.serverLevel(), dest);
         sp.moveTo(dest.x, dest.y, dest.z, yaw, pitch);
         sp.setDeltaMovement(PortalFrame.mapDir(f, t, sp.getDeltaMovement()));
-        sp.connection.teleport(safe.x, safe.y, safe.z, yaw, pitch, RELATIVE);
+        sp.connection.teleport(safe.x, safe.y, safe.z, yaw, pitch, RELATIVE_XZ);
         settle(sp);
         sp.resetFallDistance();
         GmTeleport.setCooldown(sp, cooldown);
@@ -149,7 +152,7 @@ public final class PortalServer {
                 return;
             }
             Vec3 safe = GmTeleport.safeSpot(p, to, dest);
-            p.connection.teleport(safe.x, safe.y, safe.z, yaw, p.getXRot(), RELATIVE);
+            p.connection.teleport(safe.x, safe.y, safe.z, yaw, p.getXRot(), RELATIVE_XZ);
             settle(p);
             p.resetFallDistance();
             GmTeleport.setCooldown(p, cooldown);
@@ -214,7 +217,7 @@ public final class PortalServer {
             settleVehicle(sp, cart);
             // Клиент сидящего кресло ведёт сам и пакеты сервера о нём не слушает — подъём из ковра или переход без
             // предсказания довести до него явно.
-            if (!predicted || safe.distanceToSqr(dest) > 1e-6) sp.connection.send(new ClientboundMoveVehiclePacket(cart));
+            sp.connection.send(new ClientboundMoveVehiclePacket(cart));
             arrived(cart, cooldown);
             return;
         }

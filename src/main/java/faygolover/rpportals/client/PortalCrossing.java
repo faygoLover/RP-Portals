@@ -71,6 +71,13 @@ public final class PortalCrossing {
         boolean front = cart != null && MedicineCompat.heldFromFront(cart, p);
         if (vehicle) shift(mover, f, t, dy);
         shift(p, f, t, dy);
+        // Точка прибытия в полу (портал цели ниже пола, ковёр, плита) — поднять на пол, как поднимет сервер.
+        Vec3 at = mover.position();
+        double lift = faygolover.rpcore.gm.GmTeleport.safeSpot(mover, mover.level(), at).y - at.y;
+        if (lift > 1e-6) {
+            raise(mover, lift);
+            if (vehicle) raise(p, lift);
+        }
         p.yBob += dy;
         p.yBobO += dy;
         // Везомая каталка едет за везущим сама (пакеты движения не слушает) — поставить её перед ним, как ставит
@@ -102,6 +109,13 @@ public final class PortalCrossing {
             le.yHeadRot += dy;
             le.yHeadRotO += dy;
         }
+    }
+
+    private static void raise(Entity e, double dy) {
+        e.setPos(e.getX(), e.getY() + dy, e.getZ());
+        e.yo += dy;
+        e.yOld += dy;
+        if (e.getDeltaMovement().y < 0) e.setDeltaMovement(e.getDeltaMovement().multiply(1, 0, 1));
     }
 
     /** Сервер: сущность прошла портал — сразу туда, без скольжения и без интерполяции через полкарты. */

@@ -31,5 +31,7 @@ public class RpPortals {
     private void commonSetup(FMLCommonSetupEvent e) {
         PortalNet.register();
         e.enqueueWork(() -> RpCoreAPI.registerModule(MODID, "порталы ведущего: проходы любого вида, бесшовный переход, вид той стороны"));
+        // Необязательные интеграции — в общий отчёт RP Core (/rpcore compat).
+        e.enqueueWork(() -> faygolover.rpcore.api.RpCoreAPI.reportCompat(MODID, "rpmedicine"));
     }
 }
